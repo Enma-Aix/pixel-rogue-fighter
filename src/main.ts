@@ -5,8 +5,12 @@ import { audio } from "./game/audio";
 import { GAME_HEIGHT, GAME_WIDTH, GRAVITY } from "./game/constants";
 import { live } from "./game/live";
 import { BootScene } from "./game/scenes/BootScene";
+import { EventScene } from "./game/scenes/EventScene";
 import { GameScene } from "./game/scenes/GameScene";
+import { MapScene } from "./game/scenes/MapScene";
 import { MenuScene } from "./game/scenes/MenuScene";
+import { RestScene } from "./game/scenes/RestScene";
+import { RunShopScene } from "./game/scenes/RunShopScene";
 import { ShopScene } from "./game/scenes/ShopScene";
 import { SummaryScene } from "./game/scenes/SummaryScene";
 import { UpgradeScene } from "./game/scenes/UpgradeScene";
@@ -45,7 +49,7 @@ async function main(): Promise<void> {
       height: GAME_HEIGHT,
     },
     input: { keyboard: true },
-    scene: [BootScene, MenuScene, ShopScene, GameScene, UpgradeScene, SummaryScene],
+    scene: [BootScene, MenuScene, ShopScene, MapScene, GameScene, UpgradeScene, RunShopScene, EventScene, RestScene, SummaryScene],
   });
   window.__jintu = { get: () => live, game };
 }

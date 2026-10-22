@@ -3,7 +3,7 @@ import { loopFrame, playFrame } from "../art";
 import { ART, TUNING } from "../constants";
 import { stickToSurface, tryStep } from "../step";
 import { enemyStats } from "../upgrades";
-import type { EnemyKind, Swing, WorldApi } from "../types";
+import type { EliteMod, EnemyKind, Mods, Swing, WorldApi } from "../types";
 import { FONT } from "../ui";
 
 interface SwingSpec {
@@ -32,6 +32,9 @@ const BODY: Record<EnemyKind, { w: number; h: number }> = {
   archer: { w: 34, h: 80 },
   brute: { w: 58, h: 108 },
   boss: { w: 56, h: 118 },
+  shield: { w: 42, h: 90 },
+  bomber: { w: 34, h: 80 },
+  leaper: { w: 32, h: 78 },
 };
 
 export class Enemy extends Phaser.Physics.Arcade.Sprite {
@@ -65,6 +68,19 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private enraged = false;
   private deadT = 0;
   private deathDust = false;
+  private guard = 0;
+  private leaping = false;
+  private leapT = 0;
+  private bleed = 0;
+  private burn = 0;
+  private bleedHit = 2;
+  private dotT = 0.4;
+  private kindle = false;
+  private grace = 0;
+  readonly elite: EliteMod | undefined;
+  readonly minion: boolean;
+  gold: number;
+  private armor = 1;
   private liveSpec: SwingSpec | null = null;
   private readonly poise: boolean;
   private readonly markH: number;
@@ -77,6 +93,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     kind: EnemyKind,
     stage: number,
     private world: WorldApi,
+    elite?: EliteMod,
+    minion = false,
   ) {
     super(scene, x, y, `ch-${kind}`, 0);
     this.kind = kind;
@@ -87,6 +105,35 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.dmg = stats.dmg;
     this.speed = stats.speed;
     this.name = stats.name;
+    this.gold = stats.gold;
+    this.elite = elite;
+    this.minion = minion;
+    if (minion) {
+      this.hp = 14;
+      this.maxHp = 14;
+      this.dmg = 5;
+      this.speed = 100;
+      this.gold = 2;
+      this.name = "残片";
+      this.grace = 0.45;
+    } else if (elite === "armored") {
+      this.hp = Math.round(this.hp * 1.55);
+      this.maxHp = this.hp;
+      this.gold = Math.round(this.gold * 2.1);
+      this.armor = 0.72;
+      this.name = `甲·${this.name}`;
+    } else if (elite === "enraged") {
+      this.hp = Math.round(this.hp * 1.15);
+      this.maxHp = this.hp;
+      this.dmg = Math.round(this.dmg * 1.3);
+      this.speed *= 1.35;
+      this.gold = Math.round(this.gold * 1.7);
+      this.name = `怒·${this.name}`;
+    } else if (elite === "split") {
+      this.gold = Math.round(this.gold * 1.8);
+      this.name = `裂·${this.name}`;
+    }
+    if (kind === "shield") this.guard = 3;
     this.poise = kind === "boss";
     this.awake = kind === "boss" ? 1.45 : 0.28;
     scene.add.existing(this);
@@ -127,29 +174,33 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     return { x: body.center.x, y: body.center.y, w: body.width, h: body.height };
   }
 
-  receive(amount: number, kb: number, stun: number, dir: number, crit: boolean): boolean {
-    if (this.dead || this.hp <= 0) return false;
-    const dmg = Math.max(1, Math.round(amount));
+  receive(amount: number, kb: number, stun: number, dir: number, crit: boolean, tag?: "light" | "heavy" | "special"): boolean {
+    if (this.dead) return false;
+    if (this.hp <= 0) {
+      this.finish(dir);
+      return true;
+    }
+    if (this.grace > 0) return false;
+    const front = dir === -this.facing;
+    if (this.guard > 0 && front && tag !== "heavy" && tag !== "special") {
+      this.guard -= 1;
+      this.world.float(this.x, this.y - this.markH, this.guard > 0 ? "格挡" : "破盾", "#cfe6ff");
+      this.world.sfx("hit");
+      this.flash = 0.08;
+      return false;
+    }
+    if (this.guard > 0 && (tag === "heavy" || tag === "special")) {
+      this.guard = 0;
+      this.world.float(this.x, this.y - this.markH, "破盾", "#ffe08a");
+    }
+    const dmg = Math.max(1, Math.round(amount * this.armor));
     this.hp -= dmg;
     this.world.float(this.x, this.y - this.markH, crit ? `${dmg}!` : `${dmg}`, crit ? "#ffe08a" : "#fff6ea");
     this.world.spark(this.x + dir * 8, this.y - 58, crit ? 0xffe08a : 0xff8a32, crit ? 12 : 8);
     this.world.sfx(crit ? "slam" : "hit");
     this.flash = crit ? 0.16 : 0.1;
     if (this.hp <= 0) {
-      this.hp = 0;
-      this.dead = true;
-      this.swing = null;
-      this.mode = "hurt";
-      this.visual = "dead";
-      this.setVelocity(dir * 140, -180);
-      this.deadT = 0;
-      this.world.sfx("ko");
-      this.world.spark(this.x, this.y - 48, 0xffb45a, this.kind === "boss" ? 18 : 12);
-      this.world.dust(this.x - 16, this.y);
-      this.world.dust(this.x + 16, this.y);
-      this.world.shake(this.kind === "boss" ? 220 : 90, this.kind === "boss" ? 0.016 : 0.007);
-      this.world.hitStop(this.kind === "boss" ? 110 : 42);
-      this.world.onKill(this.kind, this.x, this.y);
+      this.finish(dir);
       return true;
     }
     if (this.poise) {
@@ -166,6 +217,46 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     return true;
   }
 
+  private finish(dir: number): void {
+    if (this.dead) return;
+    this.hp = 0;
+    this.dead = true;
+    this.swing = null;
+    this.mode = "hurt";
+    this.visual = "dead";
+    this.setVelocity(dir * 140, -180);
+    this.deadT = 0;
+    this.world.sfx("ko");
+    this.world.spark(this.x, this.y - 48, 0xffb45a, this.kind === "boss" ? 18 : 12);
+    this.world.dust(this.x - 16, this.y);
+    this.world.dust(this.x + 16, this.y);
+    this.world.shake(this.kind === "boss" ? 220 : 90, this.kind === "boss" ? 0.016 : 0.007);
+    this.world.hitStop(this.kind === "boss" ? 110 : 42);
+    if (this.kindle && (this.bleed > 0 || this.burn > 0)) this.world.splash(this.x, this.y - 40, 8 + this.bleed * 3);
+    if (this.elite === "split" && !this.minion) {
+      this.world.spawnMinion(this.x - 36, this.y);
+      this.world.spawnMinion(this.x + 36, this.y);
+    }
+    this.world.onKill(this.kind, this.x, this.y, this.gold);
+  }
+
+  suffer(mods: Mods): void {
+    if (this.dead) return;
+    if (mods.bleed > 0) {
+      this.bleed = Math.min(8, this.bleed + mods.bleed);
+      this.bleedHit = 2 + mods.bleedDmg;
+    }
+    if (mods.burn > 0 && Math.random() < mods.burn) this.burn = Math.min(6, this.burn + 2);
+    if (mods.kindle) this.kindle = true;
+  }
+
+  chip(amount: number, color = "#ffb0b0"): void {
+    if (this.dead || this.hp <= 0 || amount <= 0) return;
+    this.hp -= amount;
+    this.world.float(this.x, this.y - this.markH, `${Math.round(amount)}`, color);
+    if (this.hp <= 0) this.receive(1, 40, 0.1, 1, false);
+  }
+
   update(dt: number): void {
     if (this.clearSwing) {
       this.swing = null;
@@ -173,9 +264,11 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     }
     this.animT += dt;
     this.hopCd -= dt;
+    if (this.grace > 0) this.grace -= dt;
     this.paint();
+    this.tickDots(dt);
     if (this.y > 690 && !this.dead) {
-      this.receive(9999, 0, 0, 1, false);
+      this.receive(9999, 0, 0, this.facing, false, "heavy");
     }
     if (this.dead) {
       this.swing = null;
@@ -220,6 +313,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     if (this.kind === "boss") this.updateBoss(dt);
     else if (this.kind === "archer") this.updateArcher(dt);
     else if (this.kind === "brute") this.updateBrute(dt);
+    else if (this.kind === "bomber") this.updateBomber(dt);
+    else if (this.kind === "leaper") this.updateLeaper(dt);
     else this.updateGrunt(dt);
     this.maybeHop();
     if (this.mode === "move") tryStep(this, this.facing, this.world.solids);
@@ -579,6 +674,128 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     return false;
   }
 
+  private tickDots(dt: number): void {
+    if (this.dead || (this.bleed <= 0 && this.burn <= 0)) return;
+    this.dotT -= dt;
+    if (this.dotT > 0) return;
+    this.dotT = 0.55;
+    const amount = Math.max(1, Math.round(this.bleed * this.bleedHit + this.burn * 2));
+    const color = this.burn > 0 ? "#ff8a3a" : "#ff6a7a";
+    if (this.bleed > 0) this.bleed -= 1;
+    if (this.burn > 0) this.burn -= 1;
+    this.chip(amount, color);
+  }
+
+  private updateBomber(dt: number): void {
+    if (this.mode === "wind") {
+      this.setVelocityX(0);
+      this.timer -= dt;
+      this.visual = "attack";
+      this.visualT = 0.4;
+      if (this.timer <= 0) {
+        this.mode = "recover";
+        this.timer = 0.35;
+        this.world.sfx("arrow");
+        this.world.fire({
+          x: this.x + this.facing * 20,
+          y: this.y - 78,
+          vx: this.facing * 170,
+          vy: -360,
+          w: 22,
+          h: 22,
+          life: 2.4,
+          damage: this.dmg,
+          kb: 150,
+          stun: 0.2,
+          dir: this.facing,
+          fromPlayer: false,
+          tex: "bomb",
+          crit: 0,
+          lifesteal: 0,
+          gravity: 760,
+          bomb: true,
+        });
+      }
+      return;
+    }
+    if (this.mode === "recover") {
+      this.setVelocityX(0);
+      this.visual = "idle";
+      this.timer -= dt;
+      if (this.timer <= 0) {
+        this.mode = "move";
+        this.cd = 1.7;
+      }
+      return;
+    }
+    const dx = this.world.focus.x - this.x;
+    const dist = Math.abs(dx);
+    this.facing = Math.sign(dx) || this.facing;
+    if (dist < 150) this.setVelocityX(-this.facing * this.speed);
+    else if (dist > 280) this.setVelocityX(this.facing * this.speed * 0.8);
+    else this.setVelocityX(0);
+    this.visual = Math.abs((this.body as Phaser.Physics.Arcade.Body).velocity.x) > 8 ? "run" : "idle";
+    if (this.cd <= 0 && this.grounded() && dist < 460) this.beginWind(0.55, "attack");
+  }
+
+  private updateLeaper(dt: number): void {
+    if (this.leaping) {
+      this.leapT += dt;
+      this.visual = "attack";
+      this.visualT = 0.55;
+      const body = this.body as Phaser.Physics.Arcade.Body;
+      if (this.leapT > 0.18 && body.blocked.down) {
+        this.leaping = false;
+        this.mode = "active";
+        this.timer = 0.14;
+        this.swing = this.makeSwing({ damage: this.dmg + 2, kb: 230, stun: 0.26, w: 84, h: 50, ox: 52, oy: -48 });
+        this.world.dust(this.x, this.y);
+        this.world.shake(50, 0.004);
+      }
+      return;
+    }
+    if (this.mode === "wind") {
+      this.setVelocityX(0);
+      this.timer -= dt;
+      this.visual = "attack";
+      this.visualT = 0.2;
+      if (this.timer <= 0) {
+        const dir = Math.sign(this.world.focus.x - this.x) || this.facing;
+        this.facing = dir;
+        this.leaping = true;
+        this.leapT = 0;
+        this.mode = "active";
+        this.setVelocity(dir * 430, -480);
+        this.world.sfx("dash");
+      }
+      return;
+    }
+    if (this.mode === "active") {
+      this.visualT = 0.8;
+      this.timer -= dt;
+      if (this.swing && this.liveSpec) this.swing.rect = this.rectOf(this.liveSpec);
+      if (this.timer <= 0) {
+        this.mode = "recover";
+        this.timer = 0.32;
+        if (this.swing) this.clearSwing = true;
+      }
+      return;
+    }
+    if (this.mode === "recover") {
+      this.setVelocityX(0);
+      this.visual = "idle";
+      this.timer -= dt;
+      if (this.timer <= 0) {
+        this.mode = "move";
+        this.cd = 1.15;
+      }
+      return;
+    }
+    const dist = this.chase(this.speed, 64);
+    this.visual = Math.abs((this.body as Phaser.Physics.Arcade.Body).velocity.x) > 8 ? "run" : "idle";
+    if (this.cd <= 0 && this.grounded() && dist < 360) this.beginWind(dist < 110 ? 0.16 : 0.28, "attack");
+  }
+
   private beginWind(dur: number, visual: string): void {
     this.mode = "wind";
     this.timer = dur;
@@ -648,6 +865,11 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     }
     if (this.mode === "wind" && !this.dead) this.setTint(0xff9a9a);
     else if (this.enraged && !this.dead) this.setTint(0xffb088);
+    else if (this.elite === "armored" && !this.dead) this.setTint(0xb7d4ff);
+    else if (this.elite === "enraged" && !this.dead) this.setTint(0xff8866);
+    else if (this.elite === "split" && !this.dead) this.setTint(0xe0b0ff);
+    else if (this.burn > 0 && !this.dead) this.setTint(0xffa060);
+    else if (this.bleed > 0 && !this.dead) this.setTint(0xff8aa0);
     else this.clearTint();
   }
 
@@ -659,8 +881,11 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.setFrame(frame);
     this.setFlipX(this.facing < 0);
     this.marker.setPosition(this.x, this.y - this.markH);
-    this.marker.setText(this.kind === "boss" ? this.callout : "!");
-    this.marker.setVisible(this.mode === "wind" && !this.dead);
+    const eliteMark = this.elite === "armored" ? "甲" : this.elite === "enraged" ? "怒" : this.elite === "split" ? "裂" : this.guard > 0 ? "盾" : "";
+    if (this.kind === "boss") this.marker.setText(this.callout);
+    else if (this.mode === "wind") this.marker.setText("!");
+    else this.marker.setText(eliteMark);
+    this.marker.setVisible(!this.dead && (this.mode === "wind" || eliteMark !== ""));
     this.setDepth(10 + this.y * 0.0001);
   }
 

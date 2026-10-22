@@ -5,11 +5,11 @@ import { Enemy } from "../entities/enemy";
 import { Player } from "../entities/player";
 import { spawnAfterimage, spawnDust, spawnSlash, spawnSpark, floatText } from "../fx";
 import { Hud } from "../hud";
-import { buildLevel } from "../levels";
+import { buildRoom } from "../levels";
 import { publish } from "../live";
-import { getRun, type RunState } from "../run";
-import { defaultMods, enemyStats, grantGold, modsFrom, UPGRADES } from "../upgrades";
-import { TouchControls } from "../touch";
+import { currentNode, getRun, type RunState } from "../run";
+import { defaultMods, modsFrom, synergyLine, UPGRADES } from "../upgrades";
+import { toggleTouch, touchOn, TouchControls } from "../touch";
 import type { BufferName, EndMode, InputState, LevelData, ShotSpec, Solid, SpawnDef, WorldApi } from "../types";
 import { FONT, justDown } from "../ui";
 
@@ -78,6 +78,8 @@ export class GameScene extends Phaser.Scene implements WorldApi {
   private combo = 0;
   private comboT = 0;
   private mods = defaultMods();
+  private hazardGfx!: Phaser.GameObjects.Graphics;
+  private hazardT = 0;
   private debugOn = false;
   private debugDom: HTMLDivElement | null = null;
   private volumeLabel!: Phaser.GameObjects.Text;
@@ -102,7 +104,12 @@ export class GameScene extends Phaser.Scene implements WorldApi {
     }
     this.run = run;
     this.mods = modsFrom(run);
-    this.level = buildLevel(run.stage, run.seed);
+    const node = currentNode();
+    if (!node || (node.kind !== "combat" && node.kind !== "elite" && node.kind !== "boss")) {
+      this.scene.start("map");
+      return;
+    }
+    this.level = buildRoom(run.stage, run.seed, node.id, node.kind);
     this.enemies = [];
     this.shots = [];
     this.lanterns = [];
@@ -150,6 +157,8 @@ export class GameScene extends Phaser.Scene implements WorldApi {
     catchBlock.setVisible(false);
     catchBlock.setDisplaySize(this.level.width + 120, 80);
     catchBlock.refreshBody();
+    this.hazardGfx = this.add.graphics().setDepth(6);
+    this.drawHazards(0);
 
     for (const decor of this.level.decors) {
       if (decor.kind === "lantern") {
@@ -229,6 +238,8 @@ export class GameScene extends Phaser.Scene implements WorldApi {
       .setDepth(230)
       .setAlpha(0)
       .setName("banner");
+    const roomTag = node.kind === "elite" ? " · 精锐" : node.kind === "boss" ? " · 首领" : "";
+    (this.children.getByName("banner") as Phaser.GameObjects.Text).setText(`${look.label}  ${look.name}${roomTag}`);
     const banner = this.children.getByName("banner") as Phaser.GameObjects.Text;
     this.tweens.add({
       targets: banner,
@@ -273,6 +284,7 @@ export class GameScene extends Phaser.Scene implements WorldApi {
     this.focus.x = this.player.x;
     this.focus.y = this.player.y;
     this.player.update(dt, this.inputState);
+    this.scorchHazards(dt);
     for (const enemy of [...this.enemies]) {
       if (enemy.active) enemy.update(dt);
     }
@@ -379,9 +391,9 @@ export class GameScene extends Phaser.Scene implements WorldApi {
     this.run.cause = cause;
   }
 
-  onKill(kind: SpawnDef["kind"], x: number, y: number): void {
-    const stats = enemyStats(kind, this.run.stage);
-    const gained = grantGold(stats.gold, this.mods.gold);
+  onKill(kind: SpawnDef["kind"], x: number, y: number, gold: number): void {
+    const gained = Math.max(1, Math.round(gold * this.mods.gold));
+    this.run.gold += gained;
     this.run.goldEarned += gained;
     this.run.kills += 1;
     this.float(x, y - 78, `+${gained}`, "#ffd56a");
@@ -420,7 +432,7 @@ export class GameScene extends Phaser.Scene implements WorldApi {
 
   private spawn(spawn: SpawnDef): void {
     if (this.leaving) return;
-    const enemy = new Enemy(this, spawn.x, spawn.y - 6, spawn.kind, this.run.stage, this);
+    const enemy = new Enemy(this, spawn.x, spawn.y - 6, spawn.kind, this.run.stage, this, spawn.elite, !!spawn.minion);
     this.physics.add.collider(enemy, this.solidsGroup);
     this.enemies.push(enemy);
     this.dust(spawn.x, spawn.y);
@@ -450,9 +462,11 @@ export class GameScene extends Phaser.Scene implements WorldApi {
         if (!rectsOverlap(player.swing.rect, enemy.hurtbox())) continue;
         player.swing.seen.add(enemy.eid);
         const crit = Math.random() < player.swing.crit;
-        const damage = Math.max(1, Math.round(player.swing.damage * (crit ? 1.75 : 1)));
-        const landed = enemy.receive(damage, player.swing.kb, player.swing.stun, player.swing.dir, crit);
+        const damage = Math.max(1, Math.round(player.swing.damage * (crit ? this.mods.critMul : 1)));
+        const tag = player.swing.kind === "heavy" || player.swing.kind === "special" ? player.swing.kind : "light";
+        const landed = enemy.receive(damage, player.swing.kb, player.swing.stun, player.swing.dir, crit, tag);
         if (landed) {
+          enemy.suffer(this.mods);
           if (player.swing.lifesteal > 0) player.heal(damage * player.swing.lifesteal);
           const weight = (player.swing.kind === "heavy" ? 0.85 : player.swing.kind === "special" ? 0.7 : 0.38) + (crit ? 0.18 : 0);
           this.hitStop(Math.round(18 + weight * 64));
@@ -476,12 +490,18 @@ export class GameScene extends Phaser.Scene implements WorldApi {
   private updateShots(dt: number): void {
     for (const shot of this.shots) {
       if (!shot.alive) continue;
+      if (shot.gravity) shot.vy += shot.gravity * dt;
       shot.x += shot.vx * dt;
       shot.y += shot.vy * dt;
       shot.life -= dt;
       shot.image.setPosition(shot.x, shot.y);
+      if (shot.bomb && shot.y >= this.surfaceAt(shot.x) - 8) {
+        this.boom(shot);
+        continue;
+      }
       if (shot.life <= 0 || shot.x < -80 || shot.x > this.level.width + 80) {
-        shot.alive = false;
+        if (shot.bomb) this.boom(shot);
+        else shot.alive = false;
         continue;
       }
       if (!shot.ignoreSolid && this.hitsSolid(shot.x, shot.y)) {
@@ -494,9 +514,12 @@ export class GameScene extends Phaser.Scene implements WorldApi {
           if (!rectsOverlap(shot, enemy.hurtbox())) continue;
           shot.seen.add(enemy.eid);
           const crit = Math.random() < shot.crit;
-          const damage = Math.max(1, Math.round(shot.damage * (crit ? 1.75 : 1)));
-          const landed = enemy.receive(damage, shot.kb, shot.stun, shot.dir, crit);
+          const damage = Math.max(1, Math.round(shot.damage * (crit ? this.mods.critMul : 1)));
+          const tag = shot.tex === "energy" || shot.tex === "shock" ? "special" : "light";
+          const landed = enemy.receive(damage, shot.kb, shot.stun, shot.dir, crit, tag);
           if (landed) {
+            enemy.suffer(this.mods);
+            if (shot.refund) this.player.refundSpecial(shot.refund);
             if (shot.lifesteal > 0) this.player.heal(damage * shot.lifesteal);
             this.hitStop(crit ? 36 : 20);
             this.shake(46, crit ? 0.0045 : 0.0028);
@@ -516,6 +539,84 @@ export class GameScene extends Phaser.Scene implements WorldApi {
       shot.image.destroy();
       return false;
     });
+  }
+
+  chipNear(x: number, amount: number): void {
+    let best: Enemy | null = null;
+    let bestDist = 86;
+    for (const enemy of this.enemies) {
+      if (!enemy.active || enemy.dead) continue;
+      const dist = Math.abs(enemy.x - x);
+      if (dist < bestDist) {
+        best = enemy;
+        bestDist = dist;
+      }
+    }
+    best?.chip(amount, "#9fd0ff");
+  }
+
+  splash(x: number, y: number, amount: number): void {
+    this.spark(x, y, 0xff7a3a, 10);
+    for (const enemy of [...this.enemies]) {
+      if (!enemy.active || enemy.dead) continue;
+      if (Math.abs(enemy.x - x) < 78 && Math.abs(enemy.y - y) < 90) enemy.chip(amount, "#ffb15a");
+    }
+  }
+
+  spawnMinion(x: number, y: number): void {
+    this.spawn({ kind: "grunt", x, y, delay: 0, minion: true });
+  }
+
+  private surfaceAt(x: number): number {
+    let best = GROUND_Y;
+    for (const solid of this.level.solids) {
+      if (x < solid.x || x > solid.x + solid.w) continue;
+      if (solid.top < best) best = solid.top;
+    }
+    return best;
+  }
+
+  private boom(shot: LiveShot): void {
+    if (!shot.alive) return;
+    shot.alive = false;
+    this.spark(shot.x, shot.y, 0xff8a32, 12);
+    this.shake(70, 0.004);
+    this.sfx("slam");
+    if (!this.player.dead && Math.abs(this.player.x - shot.x) < 58 && Math.abs(this.player.y - shot.y) < 80) {
+      this.player.hurt(shot.damage, shot.kb, shot.stun, shot.x, "爆弹");
+    }
+  }
+
+  private scorchHazards(dt: number): void {
+    if (this.hazardT > 0) this.hazardT -= dt;
+    if (this.hazardT > 0 || this.player.dead || !this.player.grounded) return;
+    for (const hazard of this.level.hazards) {
+      if (this.player.x < hazard.x || this.player.x > hazard.x + hazard.w) continue;
+      if (Math.abs(this.player.y - hazard.y) > 36) continue;
+      this.player.hurt(hazard.kind === "flame" ? 7 : 8, 30, 0.12, this.player.x, hazard.kind === "flame" ? "地火" : "尖刺");
+      this.hazardT = 0.7;
+      this.spark(this.player.x, this.player.y - 10, hazard.kind === "flame" ? 0xff7a32 : 0xd8d0c4, 6);
+      break;
+    }
+  }
+
+  private drawHazards(time: number): void {
+    const g = this.hazardGfx;
+    g.clear();
+    for (const hazard of this.level.hazards) {
+      if (hazard.kind === "spike") {
+        g.fillStyle(0xc8d0d8, 1);
+        for (let x = hazard.x; x < hazard.x + hazard.w; x += 16) {
+          g.fillTriangle(x, hazard.y, x + 8, hazard.y - 16, x + 16, hazard.y);
+        }
+      } else {
+        const flicker = Math.sin(time * 10) * 3;
+        g.fillStyle(0xff6a28, 0.85);
+        g.fillEllipse(hazard.x + hazard.w / 2, hazard.y - 8, hazard.w, 16 + flicker);
+        g.fillStyle(0xffd27a, 0.9);
+        g.fillEllipse(hazard.x + hazard.w / 2, hazard.y - 12, hazard.w * 0.55, 10);
+      }
+    }
   }
 
   private hitsSolid(x: number, y: number): boolean {
@@ -544,6 +645,7 @@ export class GameScene extends Phaser.Scene implements WorldApi {
   }
 
   private dress(): void {
+    this.drawHazards(this.elapsed);
     const scroll = this.cameras.main.scrollX;
     this.far.tilePositionX = scroll * 0.22;
     this.mid.tilePositionX = scroll * 0.48;
@@ -615,7 +717,7 @@ export class GameScene extends Phaser.Scene implements WorldApi {
     return {
       hp: this.player.hp,
       maxHp: this.player.maxHp,
-      gold: this.run.goldEarned,
+      gold: this.run.gold,
       stageLabel: look.label,
       stageName: look.name,
       special: this.player.specialReady(),
@@ -626,7 +728,7 @@ export class GameScene extends Phaser.Scene implements WorldApi {
       hint,
       hintAlpha,
       combo: this.comboT > 0 ? this.combo : 0,
-      upgrades: names.join("  "),
+      upgrades: [synergyLine(this.run.upgrades), names.join("  ")].filter(Boolean).join("  "),
       boss: boss ? { hp: boss.hp, max: boss.maxHp, rage: boss.raging } : undefined,
     };
   }
@@ -636,17 +738,18 @@ export class GameScene extends Phaser.Scene implements WorldApi {
     gfx.fillStyle(0x0c0a10, 0.72);
     gfx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
     gfx.fillStyle(0x161018, 0.95);
-    gfx.fillRoundedRect(330, 150, 300, 230, 12);
+    gfx.fillRoundedRect(330, 140, 300, 270, 12);
     gfx.lineStyle(2, 0xe2c27a, 1);
-    gfx.strokeRoundedRect(330, 150, 300, 230, 12);
+    gfx.strokeRoundedRect(330, 140, 300, 270, 12);
     this.pauseTitle = this.add
       .text(480, 190, "暂停", { fontFamily: FONT, fontSize: "36px", color: "#f6edd4" })
       .setOrigin(0.5);
     this.pauseItems = [
-      this.add.text(480, 260, "继续", { fontFamily: FONT, fontSize: "26px", color: "#f6edd8" }).setOrigin(0.5),
-      this.add.text(480, 320, "放弃征途", { fontFamily: FONT, fontSize: "26px", color: "#f6edd8" }).setOrigin(0.5),
+      this.add.text(480, 248, "继续", { fontFamily: FONT, fontSize: "26px", color: "#f6edd8" }).setOrigin(0.5),
+      this.add.text(480, 304, "触屏按键", { fontFamily: FONT, fontSize: "26px", color: "#f6edd8" }).setOrigin(0.5),
+      this.add.text(480, 360, "放弃征途", { fontFamily: FONT, fontSize: "26px", color: "#f6edd8" }).setOrigin(0.5),
     ];
-    const zones = [260, 320].map((y, index) => {
+    const zones = [248, 304, 360].map((y, index) => {
       const zone = this.add.zone(480, y, 220, 44).setInteractive();
       zone.on("pointerdown", () => {
         this.pauseIndex = index;
@@ -658,14 +761,16 @@ export class GameScene extends Phaser.Scene implements WorldApi {
   }
 
   private handlePause(): void {
-    if (justDown(this.keys.up) || justDown(this.cursors.up)) this.pauseIndex = 0;
-    if (justDown(this.keys.down) || justDown(this.cursors.down)) this.pauseIndex = 1;
+    if (justDown(this.keys.up) || justDown(this.cursors.up)) this.pauseIndex = (this.pauseIndex + 2) % 3;
+    if (justDown(this.keys.down) || justDown(this.cursors.down)) this.pauseIndex = (this.pauseIndex + 1) % 3;
+    this.pauseItems[1].setText(`触屏按键：${touchOn() ? "开" : "关"}`);
     this.pauseItems.forEach((text, index) => text.setColor(index === this.pauseIndex ? "#ffe08a" : "#f6edd8"));
     if (justDown(this.keys.enter) || justDown(this.keys.light)) this.confirmPause();
   }
 
   private confirmPause(): void {
     if (this.pauseIndex === 0) this.paused = false;
+    else if (this.pauseIndex === 1) this.touch.setVisible(toggleTouch());
     else this.leave("summary", { mode: "quit" satisfies EndMode });
   }
 
@@ -695,7 +800,7 @@ export class GameScene extends Phaser.Scene implements WorldApi {
       stage: this.run.stage,
       hp: Math.round(this.player.hp),
       maxHp: this.player.maxHp,
-      gold: this.run.goldEarned,
+      gold: this.run.gold,
       kills: this.run.kills,
       x: Math.round(this.player.x),
       y: Math.round(this.player.y),

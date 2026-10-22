@@ -127,7 +127,7 @@ export class MenuScene extends Phaser.Scene {
 
   private startRun(): void {
     beginRun();
-    this.go("game");
+    this.go("map");
   }
 
   private openHelp(): void {
@@ -166,6 +166,7 @@ const HELP = `移动      A / D  或  ← / →
 暂停      Esc
 音量      M（关 / 低 / 中 / 高）
 
-一局三折。每折结束三选一强化。
-金币会留下来，可在永久强化里花掉。
-倒下则本局结束。触屏会显示虚拟按键。`;
+一局是一张岔路。战斗、精锐、商店、际遇、歇脚，最后是残将。
+强化分灼血、迅刃、反手、奥流。同路拿得越多，越会咬合。
+这一局的金币能在路摊花掉，剩下的在结算时存进永久强化。
+触屏按键默认只在触屏上出现，暂停里可以开关。`;

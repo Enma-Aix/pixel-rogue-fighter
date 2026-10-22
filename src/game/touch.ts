@@ -5,14 +5,26 @@ import { FONT } from "./ui";
 type Hold = "left" | "right" | "jump";
 
 const LAYOUT: { id: Hold | BufferName; label: string; x: number; y: number }[] = [
-  { id: "left", label: "左", x: 78, y: 472 },
-  { id: "right", label: "右", x: 162, y: 472 },
-  { id: "jump", label: "跳", x: 258, y: 456 },
-  { id: "light", label: "轻", x: 690, y: 472 },
-  { id: "heavy", label: "重", x: 774, y: 456 },
-  { id: "dodge", label: "闪", x: 858, y: 472 },
-  { id: "special", label: "奥", x: 774, y: 386 },
+  { id: "left", label: "左", x: 58, y: 500 },
+  { id: "right", label: "右", x: 124, y: 500 },
+  { id: "jump", label: "跳", x: 190, y: 500 },
+  { id: "light", label: "轻", x: 770, y: 500 },
+  { id: "heavy", label: "重", x: 836, y: 500 },
+  { id: "dodge", label: "闪", x: 902, y: 500 },
+  { id: "special", label: "奥", x: 902, y: 436 },
 ];
+
+let touchForce: boolean | null = null;
+
+export function touchOn(): boolean {
+  if (touchForce !== null) return touchForce;
+  return window.matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 0;
+}
+
+export function toggleTouch(): boolean {
+  touchForce = !touchOn();
+  return touchForce;
+}
 
 export class TouchControls {
   left = false;
@@ -32,13 +44,13 @@ export class TouchControls {
         .setOrigin(0.5)
         .setScrollFactor(0)
         .setDepth(261);
-      const zone = scene.add.zone(item.x, item.y, 68, 64).setScrollFactor(0).setDepth(262).setInteractive();
+      const zone = scene.add.zone(item.x, item.y, 56, 48).setScrollFactor(0).setDepth(262).setInteractive();
       const paint = (hot: boolean) => {
         gfx.clear();
         gfx.fillStyle(hot ? 0x6a4a28 : 0x161018, 0.78);
-        gfx.fillRoundedRect(item.x - 32, item.y - 30, 64, 60, 8);
+        gfx.fillRoundedRect(item.x - 28, item.y - 24, 56, 48, 8);
         gfx.lineStyle(2, 0xe2c27a, 0.9);
-        gfx.strokeRoundedRect(item.x - 32, item.y - 30, 64, 60, 8);
+        gfx.strokeRoundedRect(item.x - 28, item.y - 24, 56, 48, 8);
       };
       paint(false);
       const down = () => {
@@ -62,7 +74,7 @@ export class TouchControls {
       zone.on("pointerupoutside", up);
       this.nodes.push(gfx, text, zone);
     }
-    this.setVisible(true);
+    this.setVisible(touchOn());
   }
 
   setVisible(on: boolean): void {

@@ -145,6 +145,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private wasGround = false;
   private risingCut = false;
   private clearSwing = false;
+  private counterT = 0;
   readonly mods: Mods;
 
   constructor(
@@ -218,6 +219,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.world.sfx("hurt");
     this.iFrame = TUNING.hitIFrame;
     this.flash = 0.08;
+    if (this.mods.thorns > 0 && cause !== "反刺") this.world.chipNear(this.x, this.mods.thorns);
     this.swing = null;
     this.clearSwing = false;
     const push = this.x >= sourceX ? 1 : -1;
@@ -242,6 +244,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.animT += dt;
     if (this.iFrame > 0) this.iFrame -= dt;
     if (this.specialT > 0) this.specialT -= dt;
+    if (this.counterT > 0) this.counterT -= dt;
     this.recharge(dt);
     this.paintFlash();
 
@@ -386,6 +389,29 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setVelocityX(this.facing * TUNING.dodgeSpeed);
     this.world.sfx("dash");
     this.world.dust(this.x, this.y);
+    if (this.mods.counter > 0) this.counterT = 1.35;
+    if (this.mods.mirror) {
+      for (const dir of [-1, 1] as const) {
+        this.world.fire({
+          x: this.x + dir * 28,
+          y: this.y - 36,
+          vx: dir * 320,
+          vy: 0,
+          w: 36,
+          h: 24,
+          life: 0.28,
+          damage: 7 * this.mods.atk,
+          kb: 120,
+          stun: 0.12,
+          dir,
+          fromPlayer: true,
+          tex: "shock",
+          crit: 0,
+          lifesteal: 0,
+          ignoreSolid: true,
+        });
+      }
+    }
     this.world.afterimage(this.x, this.y, this.frame.name, this.facing < 0);
   }
 
@@ -421,9 +447,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const active = atk.w > 0 && t >= span.startup && t < span.startup + span.active;
     if (active) {
       if (!this.swing) {
+        let bonus = 1;
+        if (this.counterT > 0 && this.mods.counter > 0) {
+          bonus = 1 + this.mods.counter;
+          this.counterT = 0;
+          this.world.float(this.x, this.y - 108, "反手", "#9fd0ff");
+        }
         this.swing = {
           rect: this.hitRect(atk),
-          damage: this.scaled(atk),
+          damage: this.scaled(atk) * bonus,
           kb: atk.kind === "heavy" ? atk.knockback * this.mods.heavyKb : atk.knockback,
           stun: atk.stun,
           dir: this.facing,
@@ -494,7 +526,30 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       tex: "energy",
       crit: this.mods.crit,
       lifesteal: this.mods.lifesteal,
+      refund: this.mods.specialRefund,
     });
+    if (this.mods.echo) {
+      this.scene.time.delayedCall(130, () => {
+        if (!this.active || this.dead) return;
+        this.world.fire({
+          x: this.x + this.facing * 36,
+          y: this.y - 52,
+          vx: this.facing * 520,
+          vy: 0,
+          w: 34,
+          h: 20,
+          life: 0.4,
+          damage: damage * 0.55,
+          kb: 120,
+          stun: 0.14,
+          dir: this.facing,
+          fromPlayer: true,
+          tex: "energy",
+          crit: this.mods.crit,
+          lifesteal: this.mods.lifesteal,
+        });
+      });
+    }
     if (this.mods.shockwave) {
       for (const dir of [-1, 1] as const) {
         this.world.fire({
@@ -518,6 +573,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       }
     }
     this.world.shake(80, 0.005);
+  }
+
+  refundSpecial(seconds: number): void {
+    this.specialT = Math.max(0, this.specialT - seconds);
   }
 
   private scaled(atk: Atk): number {

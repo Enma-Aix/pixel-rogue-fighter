@@ -2,9 +2,8 @@ import Phaser from "phaser";
 import { audio } from "../audio";
 import { STAGE_LOOK } from "../constants";
 import { publish } from "../live";
-import { applyUpgrade, getRun, grantStageClear } from "../run";
-import { modsFrom } from "../upgrades";
-import { rollChoices, UPGRADES } from "../upgrades";
+import { applyUpgrade, completeNode, currentNode, getRun, noteClear } from "../run";
+import { ARCH_NAME, RARITY_NAME, rollChoices, UPGRADES } from "../upgrades";
 import type { UpgradeId } from "../types";
 import { FONT, justDown, label } from "../ui";
 
@@ -27,9 +26,15 @@ export class UpgradeScene extends Phaser.Scene {
     }
     this.busy = false;
     this.index = 0;
-    grantStageClear(modsFrom(run).gold);
-    if (!run.offer || run.offer.stage !== run.stage) {
-      run.offer = { stage: run.stage, choices: rollChoices(run) };
+    const node = currentNode();
+    if (!node) {
+      this.scene.start("map");
+      return;
+    }
+    noteClear();
+    if (!run.offer || run.offer.nodeId !== node.id) {
+      const salt = node.row * 19 + node.slot + 1;
+      run.offer = { nodeId: node.id, choices: rollChoices(run, salt, node.kind === "elite") };
     }
     this.choices = run.offer.choices;
     this.cameras.main.fadeIn(180, 7, 6, 12);
@@ -38,8 +43,8 @@ export class UpgradeScene extends Phaser.Scene {
     const look = STAGE_LOOK[run.stage];
     label(this, 480, 58, `${look.label} · ${look.name} 已通过`, 32, "#f6edd4");
     label(this, 480, 100, "择一式，再上路", 22, "#f0d7a4");
-    const heal = run.lastHeal > 0 ? `喘息回复 ${run.lastHeal}` : "生命已满";
-    label(this, 480, 136, `过关金币 +${run.lastBonus}    ${heal}`, 16, "#d9cbb0");
+    const heal = run.lastHeal > 0 ? `喘息回复 ${run.lastHeal}` : "";
+    label(this, 480, 136, `金币 +${run.lastBonus}    ${heal}`, 16, "#d9cbb0");
 
     this.gfx = this.add.graphics();
     this.choices.forEach((id, index) => {
@@ -52,11 +57,15 @@ export class UpgradeScene extends Phaser.Scene {
       zone.on("pointerdown", () => this.pick(index));
       const def = UPGRADES[id];
       const stacks = run.upgrades.filter((owned) => owned === id).length;
+      const rarityColor = def.rarity === "rare" ? "#e6b15c" : def.rarity === "uncommon" ? "#8fd0ff" : "#d7c7a4";
       this.add
-        .text(x, 250, def.name, { fontFamily: FONT, fontSize: "32px", color: "#f6edd4" })
+        .text(x, 230, `${RARITY_NAME[def.rarity]} · ${ARCH_NAME[def.arch]}`, { fontFamily: FONT, fontSize: "16px", color: rarityColor })
         .setOrigin(0.5);
       this.add
-        .text(x, 340, def.desc, {
+        .text(x, 268, def.name, { fontFamily: FONT, fontSize: "32px", color: "#f6edd4" })
+        .setOrigin(0.5);
+      this.add
+        .text(x, 350, def.desc, {
           fontFamily: FONT,
           fontSize: "18px",
           color: "#f3e6d0",
@@ -116,10 +125,10 @@ export class UpgradeScene extends Phaser.Scene {
     this.busy = true;
     audio.play("ui");
     applyUpgrade(this.choices[index]);
-    if (run.stage < 3) run.stage = (run.stage + 1) as 2 | 3;
+    completeNode();
     this.cameras.main.fadeOut(160, 7, 6, 12);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-      this.scene.start("game");
+      this.scene.start("map");
     });
   }
 }

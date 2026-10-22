@@ -1,4 +1,8 @@
-export type EnemyKind = "grunt" | "archer" | "brute" | "boss";
+export type EnemyKind = "grunt" | "archer" | "brute" | "boss" | "shield" | "bomber" | "leaper";
+export type EliteMod = "armored" | "enraged" | "split";
+export type RoomKind = "combat" | "elite" | "shop" | "event" | "rest" | "boss";
+export type Archetype = "scorch" | "swift" | "riposte" | "flow" | "neutral";
+export type Rarity = "common" | "uncommon" | "rare";
 export type MetaId = "hp" | "atk" | "agi" | "special" | "greed";
 export type UpgradeId =
   | "dmg"
@@ -12,7 +16,21 @@ export type UpgradeId =
   | "crit"
   | "guard"
   | "twin"
-  | "shock";
+  | "shock"
+  | "ember"
+  | "bleed"
+  | "cinder"
+  | "pyre"
+  | "tempo"
+  | "edge"
+  | "gale"
+  | "parry"
+  | "thorn"
+  | "brace"
+  | "mirror"
+  | "flow"
+  | "echo"
+  | "focus";
 
 export type Sfx =
   | "swing"
@@ -46,6 +64,15 @@ export interface SpawnDef {
   x: number;
   y: number;
   delay: number;
+  elite?: EliteMod;
+  minion?: boolean;
+}
+
+export interface HazardDef {
+  x: number;
+  w: number;
+  y: number;
+  kind: "spike" | "flame";
 }
 
 export interface TriggerDef {
@@ -65,6 +92,7 @@ export interface LevelData {
   solids: Solid[];
   triggers: TriggerDef[];
   decors: DecorDef[];
+  hazards: HazardDef[];
   portalX: number;
   boss: boolean;
 }
@@ -105,6 +133,9 @@ export interface ShotSpec {
   crit: number;
   lifesteal: number;
   ignoreSolid?: boolean;
+  gravity?: number;
+  bomb?: boolean;
+  refund?: number;
 }
 
 export interface Mods {
@@ -123,6 +154,16 @@ export interface Mods {
   comboMul: number;
   dashCharges: number;
   shockwave: boolean;
+  bleed: number;
+  bleedDmg: number;
+  burn: number;
+  kindle: boolean;
+  critMul: number;
+  counter: number;
+  thorns: number;
+  specialRefund: number;
+  echo: boolean;
+  mirror: boolean;
 }
 
 export interface WorldApi {
@@ -138,8 +179,11 @@ export interface WorldApi {
   hitStop(ms: number): void;
   banner(title: string, sub: string): void;
   sfx(name: Sfx): void;
-  onKill(kind: EnemyKind, x: number, y: number): void;
+  onKill(kind: EnemyKind, x: number, y: number, gold: number): void;
   blame(cause: string): void;
+  chipNear(x: number, amount: number): void;
+  splash(x: number, y: number, amount: number): void;
+  spawnMinion(x: number, y: number): void;
   afterimage(x: number, y: number, frame: string | number, flip: boolean): void;
   groundY: number;
 }

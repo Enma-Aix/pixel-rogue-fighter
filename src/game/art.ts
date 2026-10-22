@@ -84,7 +84,28 @@ export const SHEET: Record<string, Record<string, { start: number; count: number
     hit: { start: 9, count: 1 },
     dead: { start: 10, count: 1 },
   },
+  shield: {
+    idle: { start: 0, count: 2 },
+    run: { start: 2, count: 4 },
+    attack: { start: 6, count: 3 },
+    hit: { start: 9, count: 1 },
+    dead: { start: 10, count: 1 },
+  },
+  leaper: {
+    idle: { start: 0, count: 2 },
+    run: { start: 2, count: 4 },
+    attack: { start: 6, count: 3 },
+    hit: { start: 9, count: 1 },
+    dead: { start: 10, count: 1 },
+  },
   archer: {
+    idle: { start: 0, count: 2 },
+    run: { start: 2, count: 4 },
+    attack: { start: 6, count: 3 },
+    hit: { start: 9, count: 1 },
+    dead: { start: 10, count: 1 },
+  },
+  bomber: {
     idle: { start: 0, count: 2 },
     run: { start: 2, count: 4 },
     attack: { start: 6, count: 3 },
@@ -201,6 +222,65 @@ const STYLES: Record<string, Style> = {
     eye: "#1a120e",
     glow: "#ffffff",
     armored: true,
+  },
+  shield: {
+    skin: "#e4c2a4",
+    hair: "#2a2420",
+    cloth: "#3a5878",
+    clothDark: "#243848",
+    pants: "#2a3038",
+    boot: "#3a342c",
+    metal: "#d5e4f2",
+    metalDark: "#6e8498",
+    accent: "#7eb6e6",
+    blade: "#e7eef6",
+    wood: "#8a6844",
+    outline: "#12161c",
+    bulk: 1.12,
+    head: "helmet",
+    weapon: "spear",
+    eye: "#1a140f",
+    glow: "#ffffff",
+    armored: true,
+  },
+  bomber: {
+    skin: "#e8b898",
+    hair: "#241810",
+    cloth: "#a84828",
+    clothDark: "#6e2c18",
+    pants: "#3a2820",
+    boot: "#2a1c16",
+    metal: "#e6c27a",
+    metalDark: "#8a6230",
+    accent: "#ffb15a",
+    blade: "#ffe0a8",
+    wood: "#c48448",
+    outline: "#160e0c",
+    bulk: 0.98,
+    head: "hood",
+    weapon: "bow",
+    eye: "#2a120c",
+    glow: "#ffd0a0",
+  },
+  leaper: {
+    skin: "#d7b09a",
+    hair: "#1a121c",
+    cloth: "#4a2c58",
+    clothDark: "#2e1a38",
+    pants: "#241824",
+    boot: "#1c141c",
+    metal: "#c8b8d4",
+    metalDark: "#6a5878",
+    accent: "#e07ad4",
+    blade: "#f4e8ff",
+    wood: "#6a4038",
+    outline: "#120c14",
+    bulk: 0.86,
+    head: "hood",
+    weapon: "sword",
+    scarf: true,
+    eye: "#1a1020",
+    glow: "#e8b0ff",
   },
   boss: {
     skin: "#efc2a4",
@@ -564,7 +644,7 @@ function posesFor(id: string): Pose[] {
       p({ prone: true }),
     ];
   }
-  if (id === "grunt") {
+  if (id === "grunt" || id === "shield" || id === "leaper") {
     return [
       ...idle(2, 0.15),
       ...RUN.map((pose) => ({ ...pose, weapon: 0.2 })),
@@ -575,7 +655,7 @@ function posesFor(id: string): Pose[] {
       p({ prone: true }),
     ];
   }
-  if (id === "archer") {
+  if (id === "archer" || id === "bomber") {
     return [
       ...idle(2, 0).map((pose) => ({ ...pose, pull: 1, frontArm: 80 })),
       ...RUN.map((pose) => ({ ...pose, pull: 1, frontArm: 70, weapon: 0 })),
@@ -931,6 +1011,12 @@ function makeProps(scene: Phaser.Scene): void {
   stampLine(arrow, 11, 1, 15, 3, 0.9, "#e8eef4");
   stampLine(arrow, 11, 5, 15, 3, 0.9, "#e8eef4");
   addCanvas(scene, "arrow", upscale(arrow));
+
+  const bomb = createBuf(12, 12);
+  stampDisc(bomb, 6, 6, 4.2, "#6a2414");
+  stampDisc(bomb, 6, 6, 2.6, "#e07030");
+  stampDisc(bomb, 6, 3.2, 1.1, "#ffe08a");
+  addCanvas(scene, "bomb", upscale(bomb));
 
   const crescent = createBuf(16, 12);
   for (let a = -0.8; a <= 0.8; a += 0.15) {
