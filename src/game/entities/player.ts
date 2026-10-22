@@ -33,10 +33,10 @@ const ATTACKS: Record<string, Atk> = {
     damage: 10,
     knockback: 100,
     stun: 0.2,
-    ox: 68,
+    ox: 58,
     oy: -70,
-    w: 74,
-    h: 48,
+    w: 112,
+    h: 56,
     lunge: 110,
     kind: "light",
     cancelLight: "l2",
@@ -49,10 +49,10 @@ const ATTACKS: Record<string, Atk> = {
     damage: 12,
     knockback: 120,
     stun: 0.22,
-    ox: 72,
+    ox: 62,
     oy: -66,
-    w: 78,
-    h: 52,
+    w: 116,
+    h: 58,
     lunge: 80,
     kind: "light",
     cancelLight: "l1",
@@ -206,8 +206,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (got > 0) this.world.float(this.x, this.y - 100, `+${got}`, "#9dffb0");
   }
 
-  hurt(raw: number, kb: number, stun: number, sourceX: number): boolean {
+  hurt(raw: number, kb: number, stun: number, sourceX: number, cause = "受击"): boolean {
     if (this.dead || this.iFrame > 0) return false;
+    this.world.blame(cause);
     const dmg = Math.max(1, Math.round(raw * this.mods.taken));
     this.hp = Math.max(0, this.hp - dmg);
     this.world.float(this.x, this.y - 102, `${dmg}`, "#ff6d6d");
@@ -251,7 +252,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.y > TUNING.fallY) {
       const safeX = clamp(this.x - this.facing * 120, 120, 900);
       body.reset(safeX, GROUND_Y - 30);
-      this.hurt(TUNING.fallDamage, 40, 0.2, this.x + 40);
+      this.hurt(TUNING.fallDamage, 40, 0.2, this.x + 40, "坠落");
       this.wasGround = false;
       return;
     }

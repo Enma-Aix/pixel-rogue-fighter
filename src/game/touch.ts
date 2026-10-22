@@ -62,7 +62,7 @@ export class TouchControls {
       zone.on("pointerupoutside", up);
       this.nodes.push(gfx, text, zone);
     }
-    this.setVisible(window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 900);
+    this.setVisible(true);
   }
 
   setVisible(on: boolean): void {

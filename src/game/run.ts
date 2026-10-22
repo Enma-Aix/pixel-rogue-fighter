@@ -20,6 +20,8 @@ export interface RunState {
   clearedMark: number;
   lastBonus: number;
   lastHeal: number;
+  downHits: number;
+  cause: string;
 }
 
 let current: RunState | null = null;
@@ -44,6 +46,8 @@ export function beginRun(): RunState {
     clearedMark: 0,
     lastBonus: 0,
     lastHeal: 0,
+    downHits: 0,
+    cause: "",
   };
   return current;
 }

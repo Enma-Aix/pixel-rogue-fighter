@@ -318,6 +318,11 @@ export class GameScene extends Phaser.Scene implements WorldApi {
     audio.play(name);
   }
 
+  blame(cause: string): void {
+    this.run.downHits += 1;
+    this.run.cause = cause;
+  }
+
   onKill(kind: SpawnDef["kind"], x: number, y: number): void {
     const stats = enemyStats(kind, this.run.stage);
     const gained = grantGold(stats.gold, this.mods.gold);
@@ -404,7 +409,7 @@ export class GameScene extends Phaser.Scene implements WorldApi {
     for (const { enemy } of swings) {
       if (!enemy.swing) continue;
       enemy.swing.seen.add("player");
-      player.hurt(enemy.swing.damage, enemy.swing.kb, enemy.swing.stun, enemy.x);
+      player.hurt(enemy.swing.damage, enemy.swing.kb, enemy.swing.stun, enemy.x, "近战");
     }
   }
 
@@ -438,7 +443,7 @@ export class GameScene extends Phaser.Scene implements WorldApi {
         }
       } else if (!this.player.dead && !shot.seen.has("player") && rectsOverlap(shot, this.player.hurtbox())) {
         shot.seen.add("player");
-        this.player.hurt(shot.damage, shot.kb, shot.stun, shot.x);
+        this.player.hurt(shot.damage, shot.kb, shot.stun, shot.x, "箭矢");
         shot.alive = false;
       }
     }

@@ -21,7 +21,7 @@ export const TUNING = {
   dodgeIFrame: 0.26,
   dodgeCd: 0.9,
   specialCd: 4.7,
-  hitIFrame: 0.34,
+  hitIFrame: 0.5,
   coyote: 0.1,
   buffer: 0.15,
   fallY: 700,

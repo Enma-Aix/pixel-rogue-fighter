@@ -137,6 +137,7 @@ export interface WorldApi {
   hitStop(ms: number): void;
   sfx(name: Sfx): void;
   onKill(kind: EnemyKind, x: number, y: number): void;
+  blame(cause: string): void;
   afterimage(x: number, y: number, frame: string | number, flip: boolean): void;
   groundY: number;
 }

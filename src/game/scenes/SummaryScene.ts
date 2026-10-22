@@ -61,7 +61,8 @@ export class SummaryScene extends Phaser.Scene {
     label(this, 480, 140, BLURB[this.mode], 18, "#f0d7a4");
     const names = run.upgrades.length ? run.upgrades.map((id) => UPGRADES[id].name).join("、") : "无";
     const where = this.mode === "win" ? "破阵" : `${look.label} · ${look.name}`;
-    const body = `抵达  ${where}\n击败  ${run.kills}\n本局金币  ${run.goldEarned}\n强化  ${names}`;
+    const cause = run.cause ? `\n倒下前  ${run.cause} ${run.downHits} 次` : "";
+    const body = `抵达  ${where}\n击败  ${run.kills}\n本局金币  ${run.goldEarned}\n强化  ${names}${cause}`;
     this.add
       .text(480, 250, body, {
         fontFamily: FONT,
