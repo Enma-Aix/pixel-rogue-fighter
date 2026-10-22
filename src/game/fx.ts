@@ -14,12 +14,15 @@ export function floatText(scene: Phaser.Scene, x: number, y: number, text: strin
       strokeThickness: 3,
     })
     .setOrigin(0.5)
-    .setDepth(60);
+    .setDepth(60)
+    .setScale(1.35);
   scene.tweens.add({
     targets: node,
-    y: y - 38,
+    y: y - 46,
+    scale: 1,
     alpha: 0,
-    duration: 680,
+    duration: 520,
+    ease: "Cubic.easeOut",
     onComplete: () => node.destroy(),
   });
 }
@@ -54,27 +57,48 @@ export function spawnDust(scene: Phaser.Scene, x: number, y: number): void {
   const img = scene.add.image(x, y - 4, "dust", 0).setOrigin(0.5, 1).setDepth(8);
   scene.tweens.add({
     targets: img,
-    y: y - 10,
+    y: y - 14,
     alpha: 0,
-    duration: 260,
+    scaleX: 1.4,
+    duration: 280,
     onUpdate: () => {
       if (img.active) img.setFrame(Math.min(2, Math.floor(((1 - img.alpha) * 3) as number)));
     },
     onComplete: () => img.destroy(),
   });
+  for (let i = 0; i < 3; i += 1) {
+    const mote = scene.add.image(x, y - 6, "px").setDepth(8).setTint(0xd8c4a4).setScale(0.55);
+    scene.tweens.add({
+      targets: mote,
+      x: x + Phaser.Math.Between(-18, 18),
+      y: y - Phaser.Math.Between(8, 22),
+      alpha: 0,
+      duration: 220 + i * 30,
+      onComplete: () => mote.destroy(),
+    });
+  }
 }
 
-export function spawnSpark(scene: Phaser.Scene, x: number, y: number, color: number): void {
-  for (let i = 0; i < 5; i += 1) {
-    const bit = scene.add.image(x, y, "px").setDepth(26).setTint(color).setScale(0.7);
-    const angle = Math.random() * Math.PI * 2;
-    const dist = 14 + Math.random() * 22;
+export function spawnSpark(scene: Phaser.Scene, x: number, y: number, color: number, count = 6): void {
+  const ring = scene.add.circle(x, y, 6, color, 0.55).setDepth(25);
+  scene.tweens.add({
+    targets: ring,
+    scale: 2.4,
+    alpha: 0,
+    duration: 140,
+    onComplete: () => ring.destroy(),
+  });
+  for (let i = 0; i < count; i += 1) {
+    const bit = scene.add.image(x, y, "px").setDepth(26).setTint(color).setScale(0.55 + Math.random() * 0.5);
+    const angle = -Math.PI * 0.15 + (i / count) * Math.PI * 1.3 - 0.4;
+    const dist = 18 + Math.random() * 28;
     scene.tweens.add({
       targets: bit,
       x: x + Math.cos(angle) * dist,
-      y: y + Math.sin(angle) * dist,
+      y: y - Math.abs(Math.sin(angle)) * dist * 0.8 - 6,
       alpha: 0,
-      duration: 160 + Math.random() * 90,
+      duration: 160 + Math.random() * 120,
+      ease: "Quad.easeOut",
       onComplete: () => bit.destroy(),
     });
   }

@@ -11,6 +11,8 @@ export interface SaveStats {
 export interface Save {
   gold: number;
   mute: boolean;
+  /** 0 关, 1 低, 2 中, 3 高 */
+  volume: number;
   levels: Record<MetaId, number>;
   stats: SaveStats;
 }
@@ -23,6 +25,7 @@ function fresh(): Save {
   return {
     gold: 0,
     mute: false,
+    volume: 2,
     levels: { hp: 0, atk: 0, agi: 0, special: 0, greed: 0 },
     stats: { runs: 0, wins: 0, bestStage: 0, kills: 0, lifetimeGold: 0 },
   };
@@ -40,7 +43,13 @@ export function loadSave(): Save {
     if (!raw) return base;
     const parsed = JSON.parse(raw) as Partial<Save>;
     base.gold = Math.max(0, Math.floor(num(parsed.gold)));
-    base.mute = Boolean(parsed.mute);
+    const storedVolume = (parsed as { volume?: unknown }).volume;
+    if (typeof storedVolume === "number" && Number.isFinite(storedVolume)) {
+      base.volume = Math.max(0, Math.min(3, Math.floor(storedVolume)));
+    } else {
+      base.volume = parsed.mute ? 0 : 2;
+    }
+    base.mute = base.volume === 0;
     const levels = (parsed.levels ?? {}) as Partial<Record<MetaId, unknown>>;
     for (const id of META_IDS) {
       base.levels[id] = Math.max(0, Math.floor(num(levels[id])));

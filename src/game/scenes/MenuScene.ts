@@ -39,7 +39,7 @@ export class MenuScene extends Phaser.Scene {
     this.index = 0;
     this.timeOn = 0;
     const save = loadSave();
-    audio.setMuted(save.mute);
+    audio.startMusic(0);
     this.cameras.main.fadeIn(200, 7, 6, 12);
     this.add.image(0, 0, "sky-1").setOrigin(0);
     this.far = this.add.tileSprite(0, 0, 960, 540, "far-1").setOrigin(0);
@@ -74,7 +74,7 @@ export class MenuScene extends Phaser.Scene {
     this.select(0);
     label(this, 480, 460, "↑↓ 选择    Enter 确认", 16, "#cbbfa6");
     this.muteText = label(this, 480, 500, "", 16, "#b7ab96");
-    this.refreshMute(save.mute);
+    this.refreshVolume();
 
     const panel = this.add.graphics();
     panel.fillStyle(0x120e16, 0.94);
@@ -106,8 +106,8 @@ export class MenuScene extends Phaser.Scene {
     this.foe.setFrame(loopFrame("grunt", "idle", this.timeOn, 5));
     this.lantern.setFrame(Math.floor(this.timeOn * 6) % 2);
     if (justDown(this.keys.M)) {
-      const muted = audio.toggleMute();
-      this.refreshMute(muted);
+      audio.cycleVolume();
+      this.refreshVolume();
     }
     if (this.helpOpen) {
       if (justDown(this.keys.ESC) || justDown(this.keys.ENTER) || justDown(this.keys.J)) this.closeHelp();
@@ -141,8 +141,8 @@ export class MenuScene extends Phaser.Scene {
     this.help.setVisible(false);
   }
 
-  private refreshMute(muted: boolean): void {
-    this.muteText.setText(muted ? "M 音效：关" : "M 音效：开");
+  private refreshVolume(): void {
+    this.muteText.setText(`M 音量：${audio.volumeName()}`);
   }
 
   private go(key: string): void {
@@ -164,7 +164,7 @@ const HELP = `移动      A / D  或  ← / →
 奥义      U（冷却后可用）
 连招      J → J → K
 暂停      Esc
-音效      M
+音量      M（关 / 低 / 中 / 高）
 
 一局三折。每折结束三选一强化。
 金币会留下来，可在永久强化里花掉。

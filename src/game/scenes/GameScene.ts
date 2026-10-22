@@ -80,6 +80,7 @@ export class GameScene extends Phaser.Scene implements WorldApi {
   private mods = defaultMods();
   private debugOn = false;
   private debugDom: HTMLDivElement | null = null;
+  private volumeLabel!: Phaser.GameObjects.Text;
 
   constructor() {
     super("game");
@@ -116,6 +117,7 @@ export class GameScene extends Phaser.Scene implements WorldApi {
     this.comboT = 0;
     this.portalReady = false;
     this.debugOn = new URLSearchParams(window.location.search).has("debug");
+    audio.startMusic(run.stage);
     const look = STAGE_LOOK[run.stage];
 
     this.cameras.main.fadeIn(180, 7, 6, 12);
@@ -175,6 +177,16 @@ export class GameScene extends Phaser.Scene implements WorldApi {
     this.triggers = this.level.triggers.map((trigger) => ({ ...trigger, spawns: trigger.spawns.map((spawn) => ({ ...spawn })), fired: false }));
 
     this.hud = new Hud(this);
+    this.volumeLabel = this.add
+      .text(GAME_WIDTH - 24, 112, "", {
+        fontFamily: FONT,
+        fontSize: "16px",
+        color: "#f3e2b0",
+      })
+      .setOrigin(1, 0)
+      .setScrollFactor(0)
+      .setDepth(250)
+      .setAlpha(0);
     this.vignette = this.add.graphics().setScrollFactor(0).setDepth(180);
     this.touch = new TouchControls(this, (name) => {
       if (!this.paused && !this.leaving) this.setBuffer(name);
@@ -232,7 +244,7 @@ export class GameScene extends Phaser.Scene implements WorldApi {
     if (!this.player) return;
     const real = Math.min(0.05, delta / 1000);
     if (justDown(this.keys.esc) && !this.leaving && !this.player.dead) this.paused = !this.paused;
-    if (justDown(this.keys.mute)) audio.toggleMute();
+    if (justDown(this.keys.mute)) this.cycleVolume();
     if (this.leaving) {
       this.publishState();
       return;
@@ -304,8 +316,46 @@ export class GameScene extends Phaser.Scene implements WorldApi {
     spawnDust(this, x, y);
   }
 
-  spark(x: number, y: number, color: number): void {
-    spawnSpark(this, x, y, color);
+  spark(x: number, y: number, color: number, count = 6): void {
+    spawnSpark(this, x, y, color, count);
+  }
+
+  banner(title: string, sub: string): void {
+    const titleText = this.add
+      .text(GAME_WIDTH / 2, 168, title, {
+        fontFamily: FONT,
+        fontSize: "42px",
+        color: "#f6edd4",
+        stroke: "#1a1014",
+        strokeThickness: 5,
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(240)
+      .setAlpha(0);
+    const subText = this.add
+      .text(GAME_WIDTH / 2, 214, sub, {
+        fontFamily: FONT,
+        fontSize: "20px",
+        color: "#f0d0c8",
+        stroke: "#1a1014",
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(240)
+      .setAlpha(0);
+    this.tweens.add({
+      targets: [titleText, subText],
+      alpha: 1,
+      duration: 180,
+      yoyo: true,
+      hold: 980,
+      onComplete: () => {
+        titleText.destroy();
+        subText.destroy();
+      },
+    });
   }
 
   float(x: number, y: number, text: string, color: string): void {
@@ -374,6 +424,11 @@ export class GameScene extends Phaser.Scene implements WorldApi {
     this.physics.add.collider(enemy, this.solidsGroup);
     this.enemies.push(enemy);
     this.dust(spawn.x, spawn.y);
+    if (spawn.kind === "boss") {
+      this.banner("残将", "玄甲");
+      audio.play("boss");
+      this.shake(200, 0.007);
+    }
   }
 
   private fireTriggers(): void {
@@ -399,10 +454,9 @@ export class GameScene extends Phaser.Scene implements WorldApi {
         const landed = enemy.receive(damage, player.swing.kb, player.swing.stun, player.swing.dir, crit);
         if (landed) {
           if (player.swing.lifesteal > 0) player.heal(damage * player.swing.lifesteal);
-          if (player.swing.kind === "heavy") {
-            this.hitStop(45);
-            this.shake(70, 0.005);
-          }
+          const weight = (player.swing.kind === "heavy" ? 0.85 : player.swing.kind === "special" ? 0.7 : 0.38) + (crit ? 0.18 : 0);
+          this.hitStop(Math.round(18 + weight * 64));
+          this.shake(Math.round(48 + weight * 80), 0.0022 + weight * 0.006);
           this.noteCombo();
         }
       }
@@ -442,8 +496,12 @@ export class GameScene extends Phaser.Scene implements WorldApi {
           const crit = Math.random() < shot.crit;
           const damage = Math.max(1, Math.round(shot.damage * (crit ? 1.75 : 1)));
           const landed = enemy.receive(damage, shot.kb, shot.stun, shot.dir, crit);
-          if (landed && shot.lifesteal > 0) this.player.heal(damage * shot.lifesteal);
-          this.spark(shot.x, shot.y, 0xbfefff);
+          if (landed) {
+            if (shot.lifesteal > 0) this.player.heal(damage * shot.lifesteal);
+            this.hitStop(crit ? 36 : 20);
+            this.shake(46, crit ? 0.0045 : 0.0028);
+          }
+          this.spark(shot.x, shot.y, 0xbfefff, crit ? 10 : 6);
           shot.alive = false;
           break;
         }
@@ -551,8 +609,9 @@ export class GameScene extends Phaser.Scene implements WorldApi {
     let objective = "击败沿途敌人";
     if (boss) objective = "击败残将";
     else if (this.portalReady) objective = "前往出口";
-    const hint =
-      this.run.stage === 1 && this.elapsed < 9 ? "J 轻击    J 轻击    K 重击收招    L 闪避    U 奥义" : "";
+    const hintWindow = 5.4;
+    const hint = this.run.stage === 1 && this.elapsed < hintWindow ? "轻 J · 重 K · 闪 L · 奥 U" : "";
+    const hintAlpha = this.elapsed < 2.4 ? 0.9 : Math.max(0, 0.9 * (1 - (this.elapsed - 2.4) / (hintWindow - 2.4)));
     return {
       hp: this.player.hp,
       maxHp: this.player.maxHp,
@@ -565,9 +624,10 @@ export class GameScene extends Phaser.Scene implements WorldApi {
       charge: this.player.chargeRatio(),
       objective,
       hint,
+      hintAlpha,
       combo: this.comboT > 0 ? this.combo : 0,
       upgrades: names.join("  "),
-      boss: boss ? { hp: boss.hp, max: boss.maxHp } : undefined,
+      boss: boss ? { hp: boss.hp, max: boss.maxHp, rage: boss.raging } : undefined,
     };
   }
 
@@ -607,6 +667,14 @@ export class GameScene extends Phaser.Scene implements WorldApi {
   private confirmPause(): void {
     if (this.pauseIndex === 0) this.paused = false;
     else this.leave("summary", { mode: "quit" satisfies EndMode });
+  }
+
+  private cycleVolume(): void {
+    audio.cycleVolume();
+    this.volumeLabel.setText(`音量 ${audio.volumeName()}`);
+    this.volumeLabel.setAlpha(1);
+    this.tweens.killTweensOf(this.volumeLabel);
+    this.tweens.add({ targets: this.volumeLabel, alpha: 0, delay: 700, duration: 420 });
   }
 
   private leave(target: string, data?: object): void {

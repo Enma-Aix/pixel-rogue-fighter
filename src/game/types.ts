@@ -27,7 +27,8 @@ export type Sfx =
   | "win"
   | "slam"
   | "arrow"
-  | "boss";
+  | "boss"
+  | "ko";
 
 export type EndMode = "win" | "dead" | "quit";
 
@@ -131,10 +132,11 @@ export interface WorldApi {
   fire(shot: ShotSpec): void;
   slash(x: number, y: number, dir: number, heavy: boolean): void;
   dust(x: number, y: number): void;
-  spark(x: number, y: number, color: number): void;
+  spark(x: number, y: number, color: number, count?: number): void;
   float(x: number, y: number, text: string, color: string): void;
   shake(ms: number, intensity: number): void;
   hitStop(ms: number): void;
+  banner(title: string, sub: string): void;
   sfx(name: Sfx): void;
   onKill(kind: EnemyKind, x: number, y: number): void;
   blame(cause: string): void;

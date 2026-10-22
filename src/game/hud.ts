@@ -14,9 +14,10 @@ export interface HudModel {
   charge: number;
   objective: string;
   hint: string;
+  hintAlpha: number;
   combo: number;
   upgrades: string;
-  boss?: { hp: number; max: number };
+  boss?: { hp: number; max: number; rage: boolean };
 }
 
 export class Hud {
@@ -41,7 +42,11 @@ export class Hud {
     this.meta = scene.add.text(GAME_WIDTH - 24, 22, "", style(18, "#f3e2b0")).setOrigin(1, 0).setScrollFactor(0).setDepth(depth + 1);
     this.objective = scene.add.text(GAME_WIDTH - 24, 78, "", style(16, "#d7c7a4")).setOrigin(1, 0).setScrollFactor(0).setDepth(depth + 1);
     this.perks = scene.add.text(24, 104, "", style(15, "#d9c7a4")).setScrollFactor(0).setDepth(depth + 1);
-    this.hint = scene.add.text(GAME_WIDTH / 2, 392, "", style(16, "#f0e2c4")).setOrigin(0.5).setScrollFactor(0).setDepth(depth + 1);
+    this.hint = scene.add
+      .text(GAME_WIDTH / 2, 532, "", style(14, "#e7d8bf"))
+      .setOrigin(0.5, 1)
+      .setScrollFactor(0)
+      .setDepth(depth + 1);
     this.combo = scene.add.text(GAME_WIDTH / 2, 128, "", style(28, "#ffe08a")).setOrigin(0.5).setScrollFactor(0).setDepth(depth + 1);
     this.boss = scene.add.text(GAME_WIDTH / 2, 16, "", style(16, "#f0d0c8")).setOrigin(0.5, 0).setScrollFactor(0).setDepth(depth + 1);
   }
@@ -56,6 +61,7 @@ export class Hud {
     this.objective.setText(model.objective);
     this.perks.setText(model.upgrades);
     this.hint.setText(model.hint);
+    this.hint.setAlpha(model.hint ? model.hintAlpha : 0);
     this.combo.setText(model.combo >= 2 ? `${model.combo} 连击` : "");
 
     for (let i = 0; i < model.maxCharges; i += 1) {
@@ -65,9 +71,12 @@ export class Hud {
     this.bar(24 + model.maxCharges * 28 + 8, 74, 130, 12, model.special, model.special >= 1 ? 0xf0c14a : 0x8a6a32, 0x241c12);
 
     if (model.boss) {
-      this.boss.setText("残将 · 玄甲");
+      this.boss.setText(model.boss.rage ? "残将 · 狂怒" : "残将 · 玄甲");
+      this.boss.setColor(model.boss.rage ? "#ffb088" : "#f0d0c8");
       const bossRatio = model.boss.max > 0 ? model.boss.hp / model.boss.max : 0;
-      this.bar(GAME_WIDTH / 2 - 160, 38, 320, 16, bossRatio, 0xa24ad0, 0x1a1020);
+      this.bar(GAME_WIDTH / 2 - 160, 38, 320, 16, bossRatio, model.boss.rage ? 0xff5a3a : 0xa24ad0, 0x1a1020);
+      g.fillStyle(0xffe08a, 0.95);
+      g.fillRect(GAME_WIDTH / 2 - 1, 38, 2, 16);
     } else {
       this.boss.setText("");
     }

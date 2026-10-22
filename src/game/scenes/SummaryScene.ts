@@ -41,6 +41,7 @@ export class SummaryScene extends Phaser.Scene {
       return;
     }
     settleRun(this.mode);
+    audio.stopMusic();
     if (this.mode === "win") audio.play("win");
     this.busy = false;
     this.index = 0;

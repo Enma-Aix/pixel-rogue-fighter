@@ -212,8 +212,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const dmg = Math.max(1, Math.round(raw * this.mods.taken));
     this.hp = Math.max(0, this.hp - dmg);
     this.world.float(this.x, this.y - 102, `${dmg}`, "#ff6d6d");
-    this.world.spark(this.x, this.y - 64, 0xff6a62);
+    this.world.spark(this.x, this.y - 64, 0xff6a62, 8);
     this.world.shake(90, 0.006);
+    this.world.hitStop(28);
     this.world.sfx("hurt");
     this.iFrame = TUNING.hitIFrame;
     this.flash = 0.08;
