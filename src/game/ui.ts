@@ -78,20 +78,48 @@ export class GameButton {
     g.clear();
     const fill = !this.enabled ? 0x2a2430 : this.selected ? 0x6a4a28 : 0x241c28;
     const stroke = !this.enabled ? 0x5c5348 : 0xe2c27a;
-    g.fillStyle(fill, 0.94);
-    g.fillRoundedRect(-this.w / 2, -this.h / 2, this.w, this.h, 8);
-    g.lineStyle(2, stroke, 1);
-    g.strokeRoundedRect(-this.w / 2, -this.h / 2, this.w, this.h, 8);
+    paintPanel(g, -this.w / 2, -this.h / 2, this.w, this.h, fill, stroke, this.selected && this.enabled);
     this.caption.setColor(this.enabled ? "#f6edd8" : "#8d8478");
   }
 }
 
+export function paintPanel(
+  g: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  fill = 0x120e16,
+  stroke = 0xe2c27a,
+  selected = false,
+): void {
+  g.fillStyle(fill, 0.94);
+  g.fillRect(x, y, w, h);
+  g.fillStyle(0x3a2c1c, 0.9);
+  g.fillRect(x + 3, y + 3, w - 6, 3);
+  g.lineStyle(2, stroke, 1);
+  g.strokeRect(x, y, w, h);
+  g.lineStyle(3, selected ? 0xffe08a : stroke, 1);
+  const n = Math.min(10, Math.floor(Math.min(w, h) / 4));
+  g.beginPath();
+  g.moveTo(x, y + n);
+  g.lineTo(x, y);
+  g.lineTo(x + n, y);
+  g.moveTo(x + w - n, y);
+  g.lineTo(x + w, y);
+  g.lineTo(x + w, y + n);
+  g.moveTo(x, y + h - n);
+  g.lineTo(x, y + h);
+  g.lineTo(x + n, y + h);
+  g.moveTo(x + w - n, y + h);
+  g.lineTo(x + w, y + h);
+  g.lineTo(x + w, y + h - n);
+  g.strokePath();
+}
+
 export function panel(scene: Phaser.Scene, x: number, y: number, w: number, h: number): Phaser.GameObjects.Graphics {
   const g = scene.add.graphics();
-  g.fillStyle(0x120e16, 0.92);
-  g.fillRoundedRect(x, y, w, h, 10);
-  g.lineStyle(2, 0xe2c27a, 1);
-  g.strokeRoundedRect(x, y, w, h, 10);
+  paintPanel(g, x, y, w, h);
   return g;
 }
 

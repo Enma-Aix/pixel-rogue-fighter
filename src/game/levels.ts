@@ -1,3 +1,4 @@
+import { bossForAct } from "./bosses";
 import { GROUND_Y } from "./constants";
 import { Rng } from "./rng";
 import type { DecorDef, DecorKind, EliteMod, EnemyKind, HazardDef, LevelData, RoomKind, Solid, SpawnDef } from "./types";
@@ -118,6 +119,54 @@ function arena(): Built {
   };
 }
 
+function lanternYard(): Built {
+  const w = 980;
+  const solids: Solid[] = [{ x: 0, w, top: GROUND_Y }];
+  return {
+    w,
+    solids,
+    hazards: [
+      { x: 28, w: 64, y: GROUND_Y, kind: "spike" },
+      { x: w - 110, w: 64, y: GROUND_Y, kind: "spike" },
+    ],
+  };
+}
+
+function bambooCourt(): Built {
+  const w = 1020;
+  const solids: Solid[] = [
+    { x: 0, w: 300, top: GROUND_Y },
+    { x: 300, w: 140, top: GROUND_Y - 40 },
+    { x: 440, w: 240, top: GROUND_Y },
+    { x: 680, w: 130, top: GROUND_Y - 36 },
+    { x: 810, w: 210, top: GROUND_Y },
+  ];
+  return { w, solids, hazards: [{ x: 36, w: 56, y: GROUND_Y, kind: "flame" }] };
+}
+
+function ruinArena(): Built {
+  const w = 1120;
+  const solids: Solid[] = [
+    { x: 0, w, top: GROUND_Y },
+    { x: 170, w: 78, top: GROUND_Y - 56 },
+    { x: 880, w: 78, top: GROUND_Y - 56 },
+  ];
+  return {
+    w,
+    solids,
+    hazards: [
+      { x: 24, w: 60, y: GROUND_Y, kind: "flame" },
+      { x: w - 100, w: 60, y: GROUND_Y, kind: "spike" },
+    ],
+  };
+}
+
+function bossArena(stage: 1 | 2 | 3): Built {
+  if (stage === 1) return lanternYard();
+  if (stage === 2) return bambooCourt();
+  return ruinArena();
+}
+
 function layout(name: string, stage: number): Built {
   if (name === "mounds") return mounds(stage);
   if (name === "stairs") return stairs(stage);
@@ -126,9 +175,11 @@ function layout(name: string, stage: number): Built {
   return field(stage);
 }
 
-function spawnsFor(solids: Solid[], w: number, stage: number, room: "combat" | "elite" | "boss", rng: Rng): SpawnDef[] {
+function spawnsFor(solids: Solid[], w: number, stage: 1 | 2 | 3, room: "combat" | "elite" | "boss", rng: Rng): SpawnDef[] {
   if (room === "boss") {
-    return [{ kind: "boss", x: w * 0.7, y: surfaceAt(solids, w * 0.7), delay: 0.35 }];
+    const kind = bossForAct(stage);
+    const x = w * 0.55;
+    return [{ kind, x, y: surfaceAt(solids, x), delay: 0.4 }];
   }
   const count = room === "elite" ? 3 : 2;
   const list: SpawnDef[] = [];
@@ -145,10 +196,10 @@ export function buildRoom(stage: 1 | 2 | 3, seed: number, nodeId: string, room: 
   const fight = room === "boss" || room === "elite" || room === "combat";
   const rng = new Rng(hash(seed, nodeId));
   const names = stage === 1 ? ["field", "mounds", "trench"] : stage === 2 ? ["trench", "mounds", "stairs"] : ["trench", "stairs", "arena"];
-  const built = layout(room === "boss" ? "arena" : rng.pick(names), stage);
-  const hazards = room === "boss" ? built.hazards : room === "elite" ? built.hazards : built.hazards.slice(0, 1);
+  const built = room === "boss" ? bossArena(stage) : layout(rng.pick(names), stage);
+  const hazards = room === "combat" ? built.hazards.slice(0, 1) : built.hazards;
   const spawns = fight ? spawnsFor(built.solids, built.w, stage, room === "boss" ? "boss" : room === "elite" ? "elite" : "combat", rng) : [];
-  const decors = decorate(built.solids, 0, built.w, stage, rng, 0.45);
+  const decors = decorate(built.solids, 0, built.w, stage, rng, room === "boss" ? 0.72 : 0.45);
   const width = built.w + 48;
   built.solids.push({ x: -40, w: 40, top: 80 });
   built.solids.push({ x: built.w, w: 48, top: 80 });
@@ -161,5 +212,6 @@ export function buildRoom(stage: 1 | 2 | 3, seed: number, nodeId: string, room: 
     hazards,
     portalX: built.w - 90,
     boss: room === "boss",
+    finale: room === "boss" && stage === 3,
   };
 }

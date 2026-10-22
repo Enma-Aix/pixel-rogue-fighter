@@ -52,7 +52,7 @@ function link(nodes: MapNode[], from: string, to: string[]): void {
 
 function pickTwo(rng: Rng, act: 1 | 2 | 3): [RoomKind, RoomKind] {
   const bag: RoomKind[] =
-    act === 1 ? ["combat", "event", "shop", "rest"] : act === 2 ? ["combat", "elite", "shop", "event"] : ["combat", "rest", "shop", "elite"];
+    act === 1 ? ["combat", "event", "shop", "rest", "elite"] : act === 2 ? ["combat", "elite", "shop", "event"] : ["combat", "rest", "shop", "elite"];
   const first = rng.pick(bag);
   let second = rng.pick(bag);
   if (second === first) second = first === "combat" ? "shop" : "combat";
@@ -66,7 +66,7 @@ export function buildMap(seed: number): MapNode[] {
   for (const act of [1, 2, 3] as const) {
     const base = (act - 1) * 3;
     const pair = pickTwo(rng, act);
-    const finale: RoomKind = act === 3 ? "boss" : "elite";
+    const finale: RoomKind = "boss";
     nodes.push({ id: id(act, 0, 0), act, row: base, slot: 0, kind: "combat", next: [], done: false, skip: false });
     nodes.push({ id: id(act, 1, 0), act, row: base + 1, slot: 0, kind: pair[0], next: [], done: false, skip: false });
     nodes.push({ id: id(act, 1, 1), act, row: base + 1, slot: 1, kind: pair[1], next: [], done: false, skip: false });
@@ -85,7 +85,7 @@ export function buildMap(seed: number): MapNode[] {
 
 export function beginRun(): RunState {
   const save = loadSave();
-  const maxHp = 100 + save.levels.hp * 14;
+  const maxHp = 100 + save.levels.hp * 16;
   const seed = (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0;
   const map = buildMap(seed);
   current = {
@@ -134,13 +134,13 @@ export function noteClear(): void {
   const run = current;
   const node = currentNode();
   if (!run || !node || run.clearedNode === node.id) return;
-  const bonus = node.kind === "elite" ? 18 : node.kind === "boss" ? 36 : node.kind === "combat" ? 8 : 0;
+  const bonus = node.kind === "elite" ? 12 : node.kind === "boss" ? (node.act === 1 ? 10 : node.act === 2 ? 16 : 24) : node.kind === "combat" ? 5 : 0;
   run.gold += bonus;
   run.goldEarned += bonus;
   run.lastBonus = bonus;
   run.lastHeal = 0;
-  if (node.kind === "elite") {
-    const heal = Math.round(run.maxHp * 0.12);
+  if (node.kind === "elite" || (node.kind === "boss" && node.act < 3)) {
+    const heal = Math.round(run.maxHp * (node.kind === "elite" ? 0.12 : 0.1));
     const before = run.hp;
     run.hp = Math.min(run.maxHp, run.hp + heal);
     run.lastHeal = run.hp - before;

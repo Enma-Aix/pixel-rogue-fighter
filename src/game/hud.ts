@@ -17,7 +17,7 @@ export interface HudModel {
   hintAlpha: number;
   combo: number;
   upgrades: string;
-  boss?: { hp: number; max: number; rage: boolean };
+  boss?: { name: string; calm: string; rageName: string; hp: number; max: number; rage: boolean; bar: number; rageBar: number };
 }
 
 export class Hud {
@@ -71,12 +71,16 @@ export class Hud {
     this.bar(24 + model.maxCharges * 28 + 8, 74, 130, 12, model.special, model.special >= 1 ? 0xf0c14a : 0x8a6a32, 0x241c12);
 
     if (model.boss) {
-      this.boss.setText(model.boss.rage ? "残将 · 狂怒" : "残将 · 玄甲");
-      this.boss.setColor(model.boss.rage ? "#ffb088" : "#f0d0c8");
+      this.boss.setText(model.boss.rage ? `${model.boss.name} · ${model.boss.rageName}` : `${model.boss.name} · ${model.boss.calm}`);
+      this.boss.setColor(model.boss.rage ? "#ffd0b0" : "#f6edd8");
+      g.fillStyle(0x140e16, 0.82);
+      g.fillRect(GAME_WIDTH / 2 - 176, 10, 352, 48);
+      g.lineStyle(2, 0xe2c27a, 0.95);
+      g.strokeRect(GAME_WIDTH / 2 - 176, 10, 352, 48);
       const bossRatio = model.boss.max > 0 ? model.boss.hp / model.boss.max : 0;
-      this.bar(GAME_WIDTH / 2 - 160, 38, 320, 16, bossRatio, model.boss.rage ? 0xff5a3a : 0xa24ad0, 0x1a1020);
+      this.bar(GAME_WIDTH / 2 - 160, 38, 320, 14, bossRatio, model.boss.rage ? model.boss.rageBar : model.boss.bar, 0x1a1020);
       g.fillStyle(0xffe08a, 0.95);
-      g.fillRect(GAME_WIDTH / 2 - 1, 38, 2, 16);
+      g.fillRect(GAME_WIDTH / 2 - 1, 38, 2, 14);
     } else {
       this.boss.setText("");
     }
@@ -84,11 +88,18 @@ export class Hud {
 
   private bar(x: number, y: number, w: number, h: number, ratio: number, fill: number, bg: number): void {
     const g = this.gfx;
-    g.fillStyle(bg, 0.9);
+    g.fillStyle(bg, 0.92);
     g.fillRect(x, y, w, h);
+    g.fillStyle(0x000000, 0.35);
+    g.fillRect(x, y + h - 3, w, 3);
     g.fillStyle(fill, 1);
-    g.fillRect(x + 2, y + 2, Math.max(0, (w - 4) * clamp(ratio, 0, 1)), h - 4);
-    g.lineStyle(2, 0xe6d2a8, 0.9);
+    const inner = Math.max(0, (w - 4) * clamp(ratio, 0, 1));
+    g.fillRect(x + 2, y + 2, inner, h - 4);
+    if (inner > 4) {
+      g.fillStyle(0xffffff, 0.28);
+      g.fillRect(x + 2, y + 2, inner, 2);
+    }
+    g.lineStyle(2, 0xe6d2a8, 0.95);
     g.strokeRect(x, y, w, h);
   }
 }

@@ -1,4 +1,4 @@
-export type EnemyKind = "grunt" | "archer" | "brute" | "boss" | "shield" | "bomber" | "leaper";
+export type EnemyKind = "grunt" | "archer" | "brute" | "boss" | "shield" | "bomber" | "leaper" | "wisp" | "shade";
 export type EliteMod = "armored" | "enraged" | "split";
 export type RoomKind = "combat" | "elite" | "shop" | "event" | "rest" | "boss";
 export type Archetype = "scorch" | "swift" | "riposte" | "flow" | "neutral";
@@ -95,6 +95,7 @@ export interface LevelData {
   hazards: HazardDef[];
   portalX: number;
   boss: boolean;
+  finale: boolean;
 }
 
 export interface Rect {
@@ -136,6 +137,7 @@ export interface ShotSpec {
   gravity?: number;
   bomb?: boolean;
   refund?: number;
+  label?: string;
 }
 
 export interface Mods {

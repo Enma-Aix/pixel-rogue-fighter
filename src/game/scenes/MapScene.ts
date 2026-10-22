@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { audio } from "../audio";
+import { BOSS_CARD, bossForAct } from "../bosses";
 import { STAGE_LOOK } from "../constants";
 import { publish } from "../live";
 import { enterNode, getRun, reachableAhead, type MapNode } from "../run";
@@ -13,7 +14,7 @@ const NAME: Record<RoomKind, string> = {
   shop: "商店",
   event: "际遇",
   rest: "歇脚",
-  boss: "残将",
+  boss: "首领",
 };
 
 const BLURB: Record<RoomKind, string> = {
@@ -22,7 +23,7 @@ const BLURB: Record<RoomKind, string> = {
   shop: "用这一局的金币买强化，或买一次治疗。",
   event: "路上的岔事，结果不一定讨喜。",
   rest: "坐下回复，或者花一点金币换一张普通强化。",
-  boss: "残将守在这里。打倒即破阵。",
+  boss: "这一折的首领。看清招式名再动手。",
 };
 
 const MARK: Record<RoomKind, string> = {
@@ -42,6 +43,15 @@ const COLOR: Record<RoomKind, number> = {
   rest: 0x7ecb96,
   boss: 0xb06ad4,
 };
+
+function nodeCopy(node: MapNode): { mark: string; color: number; name: string; blurb: string } {
+  if (node.kind === "boss") {
+    const card = BOSS_CARD[bossForAct(node.act)];
+    const mark = node.act === 1 ? "灯" : node.act === 2 ? "竹" : "将";
+    return { mark, color: card.bar, name: card.name, blurb: `${card.intro} · ${card.introSub}。出手前会亮出招式名，打空了再还手。` };
+  }
+  return { mark: MARK[node.kind], color: COLOR[node.kind], name: NAME[node.kind], blurb: BLURB[node.kind] };
+}
 
 function spot(node: MapNode, nodes: MapNode[]): { x: number; y: number } {
   const siblings = nodes.filter((item) => item.row === node.row);
@@ -99,12 +109,20 @@ export class MapScene extends Phaser.Scene {
       const at = spot(node, run.map);
       const open = this.choice.some((item) => item.id === node.id);
       const future = ahead.has(node.id);
-      gfx.fillStyle(node.skip ? 0x2a242c : node.done ? 0x3a3428 : open ? COLOR[node.kind] : future ? 0x3a4450 : 0x241c22, 1);
-      gfx.fillCircle(at.x, at.y, open ? 20 : 16);
-      gfx.lineStyle(2, open ? 0xffe08a : 0x8a7a68, open ? 1 : 0.7);
-      gfx.strokeCircle(at.x, at.y, open ? 20 : 16);
+      const copy = nodeCopy(node);
+      const size = open ? 36 : 30;
+      const fill = node.skip ? 0x2a242c : node.done ? 0x3a3428 : open ? copy.color : future ? 0x3a4450 : 0x241c22;
+      gfx.fillStyle(fill, 1);
+      gfx.fillRect(at.x - size / 2, at.y - size / 2, size, size);
+      gfx.lineStyle(2, open ? 0xffe08a : 0x8a7a68, open ? 1 : 0.75);
+      gfx.strokeRect(at.x - size / 2, at.y - size / 2, size, size);
+      if (open) {
+        gfx.lineStyle(3, 0xffe08a, 1);
+        gfx.strokeRect(at.x - size / 2 - 3, at.y - size / 2 - 3, 8, 3);
+        gfx.strokeRect(at.x + size / 2 - 5, at.y - size / 2 - 3, 8, 3);
+      }
       this.add
-        .text(at.x, at.y, MARK[node.kind], { fontFamily: FONT, fontSize: "16px", color: node.skip ? "#6a646c" : "#f6edd8" })
+        .text(at.x, at.y, copy.mark, { fontFamily: FONT, fontSize: "16px", color: node.skip ? "#6a646c" : "#f6edd8" })
         .setOrigin(0.5);
       if (open) {
         const zone = this.add.zone(at.x, at.y, 48, 48).setInteractive({ useHandCursor: true });
@@ -149,7 +167,8 @@ export class MapScene extends Phaser.Scene {
       this.detail.setText("这一程已经走完");
       return;
     }
-    this.detail.setText(`${NAME[node.kind]}    ${BLURB[node.kind]}`);
+    const copy = nodeCopy(node);
+    this.detail.setText(`${copy.name}    ${copy.blurb}`);
   }
 
   private go(index: number): void {

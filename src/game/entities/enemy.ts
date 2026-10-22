@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { loopFrame, playFrame } from "../art";
+import { BOSS_CARD, isBossKind, type BossCard } from "../bosses";
 import { ART, TUNING } from "../constants";
 import { stickToSurface, tryStep } from "../step";
 import { enemyStats } from "../upgrades";
@@ -17,7 +18,7 @@ interface SwingSpec {
 }
 
 interface Step {
-  op: "wind" | "hold" | "hit" | "shot" | "slam";
+  op: "wind" | "hold" | "hit" | "shot" | "slam" | "lob" | "dart" | "blink";
   dur: number;
   visual: string;
   vx?: number;
@@ -35,6 +36,8 @@ const BODY: Record<EnemyKind, { w: number; h: number }> = {
   shield: { w: 42, h: 90 },
   bomber: { w: 34, h: 80 },
   leaper: { w: 32, h: 78 },
+  wisp: { w: 40, h: 92 },
+  shade: { w: 34, h: 86 },
 };
 
 export class Enemy extends Phaser.Physics.Arcade.Sprite {
@@ -134,8 +137,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       this.name = `裂·${this.name}`;
     }
     if (kind === "shield") this.guard = 3;
-    this.poise = kind === "boss";
-    this.awake = kind === "boss" ? 1.45 : 0.28;
+    this.poise = isBossKind(kind);
+    this.awake = isBossKind(kind) ? 1.55 : 0.28;
     scene.add.existing(this);
     scene.physics.add.existing(this);
     this.setOrigin(0.5, ART.footSrc / ART.texH);
@@ -144,11 +147,11 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     body.setSize(size.w, size.h);
     body.setOffset((ART.texW - size.w) / 2, ART.footSrc - size.h);
     body.setMaxVelocity(720, 860);
-    this.markH = size.h + 28;
+    this.markH = size.h + (isBossKind(kind) ? 52 : 28);
     this.marker = scene.add
       .text(x, y - this.markH, "!", {
         fontFamily: FONT,
-        fontSize: "28px",
+        fontSize: isBossKind(kind) ? "32px" : "28px",
         color: "#ffe0e0",
         stroke: "#4a1010",
         strokeThickness: 4,
@@ -167,6 +170,10 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
 
   get raging(): boolean {
     return this.enraged;
+  }
+
+  get card(): BossCard | null {
+    return isBossKind(this.kind) ? BOSS_CARD[this.kind] : null;
   }
 
   hurtbox(): { x: number; y: number; w: number; h: number } {
@@ -227,11 +234,12 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.setVelocity(dir * 140, -180);
     this.deadT = 0;
     this.world.sfx("ko");
-    this.world.spark(this.x, this.y - 48, 0xffb45a, this.kind === "boss" ? 18 : 12);
+    const boss = isBossKind(this.kind);
+    this.world.spark(this.x, this.y - 48, 0xffb45a, boss ? 18 : 12);
     this.world.dust(this.x - 16, this.y);
     this.world.dust(this.x + 16, this.y);
-    this.world.shake(this.kind === "boss" ? 220 : 90, this.kind === "boss" ? 0.016 : 0.007);
-    this.world.hitStop(this.kind === "boss" ? 110 : 42);
+    this.world.shake(boss ? 220 : 90, boss ? 0.016 : 0.007);
+    this.world.hitStop(boss ? 110 : 42);
     if (this.kindle && (this.bleed > 0 || this.burn > 0)) this.world.splash(this.x, this.y - 40, 8 + this.bleed * 3);
     if (this.elite === "split" && !this.minion) {
       this.world.spawnMinion(this.x - 36, this.y);
@@ -310,7 +318,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       return;
     }
     this.cd -= dt;
-    if (this.kind === "boss") this.updateBoss(dt);
+    if (isBossKind(this.kind)) this.updateBoss(dt);
     else if (this.kind === "archer") this.updateArcher(dt);
     else if (this.kind === "brute") this.updateBrute(dt);
     else if (this.kind === "bomber") this.updateBomber(dt);
@@ -473,7 +481,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       this.enraged = true;
       this.script = [];
       this.swing = null;
-      this.world.banner("狂怒", "玄甲裂开");
+      const card = this.card;
+      this.world.banner(card?.phase ?? "狂怒", card?.phaseSub ?? "");
       this.world.sfx("boss");
       this.world.shake(180, 0.012);
       this.world.hitStop(70);
@@ -486,7 +495,9 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     if (!step) return;
     this.stepT += dt;
     this.visual = step.visual;
-    this.visualT = Math.min(0.99, this.stepT / step.dur);
+    if (step.op === "wind") this.visualT = Math.min(0.32, this.stepT / Math.max(0.01, step.dur));
+    else if (step.op === "hit" || step.op === "slam") this.visualT = 0.72;
+    else this.visualT = Math.min(0.99, this.stepT / step.dur);
     if (step.op === "wind") {
       this.mode = "wind";
       this.setVelocityX(0);
@@ -497,9 +508,9 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       if (step.chase) {
         const dx = this.world.focus.x - this.x;
         this.facing = Math.sign(dx) || this.facing;
-        const speed = this.speed * (phase2 ? 1.25 : 1);
-        this.setVelocityX(Math.abs(dx) > 78 ? this.facing * speed : 0);
-        this.visual = Math.abs(dx) > 78 ? "run" : "idle";
+        const speed = this.speed * (phase2 ? 1.2 : 1);
+        this.setVelocityX(Math.abs(dx) > 90 ? this.facing * speed : 0);
+        this.visual = Math.abs(dx) > 90 ? "run" : "idle";
       } else {
         this.setVelocityX(0);
       }
@@ -508,67 +519,26 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       this.setVelocityX(this.facing * (step.vx ?? 0));
       if (!this.swing) this.swing = this.makeSwing(step.spec);
       else this.swing.rect = this.rectOf(step.spec);
-    } else if (step.op === "shot") {
-      this.mode = "wind";
+    } else if (step.op === "shot" || step.op === "lob" || step.op === "dart") {
+      this.mode = step.op === "shot" ? "wind" : "active";
       this.setVelocityX(0);
       if (!this.didShot) {
         this.didShot = true;
-        this.world.sfx("special");
-        this.world.fire({
-          x: this.x + this.facing * 36,
-          y: this.y - 72,
-          vx: this.facing * 320,
-          vy: 0,
-          w: 40,
-          h: 28,
-          life: 1.5,
-          damage: this.dmg + (phase2 ? 4 : 1),
-          kb: 150,
-          stun: 0.22,
-          dir: this.facing,
-          fromPlayer: false,
-          tex: "crescent",
-          crit: 0,
-          lifesteal: 0,
-        });
+        this.fireBossShot(step.op, phase2);
+      }
+    } else if (step.op === "blink") {
+      this.mode = "wind";
+      this.setVelocity(0, 0);
+      if (!this.didShot) {
+        this.didShot = true;
+        this.blinkAside();
       }
     } else if (step.op === "slam") {
       this.mode = "active";
       this.setVelocityX(0);
       if (!this.didShot) {
         this.didShot = true;
-        this.world.shake(140, 0.012);
-        this.world.sfx("slam");
-        this.world.hitStop(50);
-        this.swing = this.makeSwing({
-          damage: this.dmg + 4,
-          kb: 260,
-          stun: 0.32,
-          w: 130,
-          h: 52,
-          ox: 36,
-          oy: -42,
-        });
-        for (const dir of [-1, 1] as const) {
-          this.world.fire({
-            x: this.x + dir * 48,
-            y: this.y - 20,
-            vx: dir * 280,
-            vy: 0,
-            w: 52,
-            h: 28,
-            life: 0.6,
-            damage: this.dmg,
-            kb: 210,
-            stun: 0.26,
-            dir,
-            fromPlayer: false,
-            tex: "shock",
-            crit: 0,
-            lifesteal: 0,
-            ignoreSolid: true,
-          });
-        }
+        this.bossSlam(step.vx ?? (this.kind === "boss" ? 240 : 150));
       } else if (this.liveSpec && this.swing) {
         this.swing.rect = this.rectOf(this.liveSpec);
       }
@@ -581,51 +551,240 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     }
   }
 
+  private fireBossShot(op: "shot" | "lob" | "dart", phase2: boolean): void {
+    this.world.sfx(op === "dart" ? "arrow" : "special");
+    if (op === "lob") {
+      this.world.fire({
+        x: this.x + this.facing * 24,
+        y: this.y - 86,
+        vx: this.facing * 180,
+        vy: -300,
+        w: 26,
+        h: 26,
+        life: 2.2,
+        damage: this.dmg + 1,
+        kb: 160,
+        stun: 0.2,
+        dir: this.facing,
+        fromPlayer: false,
+        tex: "lanternshot",
+        crit: 0,
+        lifesteal: 0,
+        gravity: 640,
+        bomb: true,
+        label: "灯火",
+      });
+      return;
+    }
+    if (op === "dart") {
+      this.world.fire({
+        x: this.x + this.facing * 28,
+        y: this.y - 68,
+        vx: this.facing * 280,
+        vy: 0,
+        w: 26,
+        h: 12,
+        life: 1.15,
+        damage: this.dmg,
+        kb: 110,
+        stun: 0.14,
+        dir: this.facing,
+        fromPlayer: false,
+        tex: "dart",
+        crit: 0,
+        lifesteal: 0,
+        label: "竹镖",
+      });
+      return;
+    }
+    this.world.fire({
+      x: this.x + this.facing * 36,
+      y: this.y - 72,
+      vx: this.facing * 250,
+      vy: 0,
+      w: 40,
+      h: 28,
+      life: 1.35,
+      damage: this.dmg + (phase2 ? 3 : 1),
+      kb: 150,
+      stun: 0.2,
+      dir: this.facing,
+      fromPlayer: false,
+      tex: "crescent",
+      crit: 0,
+      lifesteal: 0,
+      label: "弧月",
+    });
+  }
+
+  private bossSlam(speed: number): void {
+    const heavy = this.kind === "boss";
+    this.world.shake(heavy ? 140 : 90, heavy ? 0.012 : 0.007);
+    this.world.sfx("slam");
+    this.world.hitStop(heavy ? 50 : 36);
+    this.swing = this.makeSwing({
+      damage: this.dmg + (heavy ? 3 : 1),
+      kb: heavy ? 240 : 160,
+      stun: 0.28,
+      w: heavy ? 110 : 64,
+      h: 46,
+      ox: heavy ? 28 : 18,
+      oy: -40,
+    });
+    for (const dir of [-1, 1] as const) {
+      this.world.fire({
+        x: this.x + dir * 40,
+        y: this.y - 18,
+        vx: dir * speed,
+        vy: 0,
+        w: 46,
+        h: 22,
+        life: heavy ? 0.55 : 0.85,
+        damage: Math.max(6, this.dmg - 2),
+        kb: 160,
+        stun: 0.2,
+        dir,
+        fromPlayer: false,
+        tex: heavy ? "shock" : "lanternshot",
+        crit: 0,
+        lifesteal: 0,
+        ignoreSolid: true,
+        label: heavy ? "震地" : "鬼火",
+      });
+    }
+  }
+
+  private blinkAside(): void {
+    const focus = this.world.focus.x;
+    const side = this.x >= focus ? -1 : 1;
+    const dest = Math.max(150, Math.min(900, focus + side * 150));
+    this.world.dust(this.x, this.y);
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    body.reset(dest, this.y);
+    this.facing = Math.sign(focus - dest) || -side;
+    this.world.dust(dest, this.y);
+    this.world.sfx("dash");
+  }
+
   private choosePattern(phase2: boolean): void {
     const dist = Math.abs(this.world.focus.x - this.x);
-    const bag = ["横斩", "突进", "弧月"];
-    if (dist > 220) bag.push("弧月", "突进");
-    if (dist < 140) bag.push("横斩");
-    if (phase2) bag.push("震地", "连斩");
-    const name = bag[Math.floor(Math.random() * bag.length)];
-    const fast = phase2 ? 0.78 : 1;
-    const d = this.dmg + (phase2 ? 3 : 0);
-    const slash = (extra: boolean): Step[] => [
-      { op: "wind", dur: 0.42 * fast, visual: "slash" },
-      { op: "hit", dur: 0.14, visual: "slash", vx: 80, spec: { damage: d + 1, kb: 180, stun: 0.24, w: 96, h: 60, ox: 78, oy: -78 } },
-      { op: "hold", dur: 0.14 * fast, visual: "slash" },
-      { op: "hit", dur: 0.14, visual: "slash", vx: 60, spec: { damage: d + 3, kb: 200, stun: 0.26, w: 104, h: 64, ox: 82, oy: -72 } },
+    const fast = phase2 ? 0.84 : 1;
+    const d = this.dmg + (phase2 ? 2 : 0);
+    const approach: Step[] = dist > 200 ? [{ op: "hold", dur: 0.26, visual: "run", chase: true }] : [];
+    const punish = (dur: number): Step => ({ op: "hold", dur: dur * fast, visual: "idle" });
+    const melee = (extra: boolean): Step[] => [
+      { op: "wind", dur: 0.5 * fast, visual: "slash" },
+      { op: "hit", dur: 0.14, visual: "slash", vx: 70, spec: { damage: d + 1, kb: 170, stun: 0.22, w: 90, h: 58, ox: 74, oy: -76 } },
+      { op: "hold", dur: 0.16 * fast, visual: "slash" },
+      { op: "hit", dur: 0.14, visual: "slash", vx: 50, spec: { damage: d + 2, kb: 190, stun: 0.24, w: 98, h: 60, ox: 78, oy: -72 } },
       ...(extra
         ? ([
-            { op: "wind", dur: 0.22 * fast, visual: "slash" },
-            { op: "hit", dur: 0.16, visual: "slash", vx: 50, spec: { damage: d + 5, kb: 240, stun: 0.3, w: 112, h: 68, ox: 86, oy: -70 } },
+            { op: "wind", dur: 0.28 * fast, visual: "slash" },
+            { op: "hit", dur: 0.15, visual: "slash", vx: 40, spec: { damage: d + 3, kb: 210, stun: 0.26, w: 104, h: 64, ox: 80, oy: -70 } },
           ] as Step[])
         : []),
-      { op: "hold", dur: 0.46 * fast, visual: "idle", chase: true },
+      punish(0.58),
     ];
-    let steps: Step[];
-    if (name === "突进") {
-      steps = [
-        { op: "wind", dur: 0.5 * fast, visual: "dash" },
-        { op: "hit", dur: 0.34, visual: "dash", vx: 460, spec: { damage: d + 4, kb: 300, stun: 0.32, w: 92, h: 66, ox: 68, oy: -70 } },
-        { op: "hold", dur: 0.5 * fast, visual: "idle" },
-      ];
-    } else if (name === "弧月") {
-      steps = [
-        { op: "wind", dur: 0.48 * fast, visual: "cast" },
-        { op: "shot", dur: 0.22, visual: "cast" },
-        { op: "hold", dur: 0.42 * fast, visual: "idle", chase: true },
-      ];
-    } else if (name === "震地") {
-      steps = [
-        { op: "wind", dur: 0.62 * fast, visual: "slam" },
-        { op: "slam", dur: 0.24, visual: "slam" },
-        { op: "hold", dur: 0.58 * fast, visual: "idle" },
-      ];
-    } else if (name === "连斩") {
-      steps = slash(true);
+    let name = "横斩";
+    let steps: Step[] = melee(false);
+    if (this.kind === "wisp") {
+      const bag = ["掷灯", "扑击", "鬼火"];
+      if (dist > 220) bag.push("掷灯", "鬼火");
+      if (dist < 140) bag.push("扑击");
+      if (phase2) bag.push("双灯");
+      name = bag[Math.floor(Math.random() * bag.length)];
+      if (name === "扑击") {
+        steps = [
+          ...approach,
+          { op: "wind", dur: 0.58 * fast, visual: "dash" },
+          { op: "hit", dur: 0.26, visual: "dash", vx: 340, spec: { damage: d + 2, kb: 220, stun: 0.26, w: 78, h: 52, ox: 58, oy: -64 } },
+          punish(0.64),
+        ];
+      } else if (name === "鬼火") {
+        steps = [
+          { op: "wind", dur: 0.72 * fast, visual: "slam" },
+          { op: "slam", dur: 0.28, visual: "slam", vx: 150 },
+          punish(0.62),
+        ];
+      } else if (name === "双灯") {
+        steps = [
+          { op: "wind", dur: 0.5 * fast, visual: "cast" },
+          { op: "lob", dur: 0.18, visual: "cast" },
+          { op: "hold", dur: 0.28, visual: "cast" },
+          { op: "lob", dur: 0.18, visual: "cast" },
+          punish(0.6),
+        ];
+      } else {
+        steps = [
+          { op: "wind", dur: 0.62 * fast, visual: "cast" },
+          { op: "lob", dur: 0.2, visual: "cast" },
+          punish(0.58),
+        ];
+      }
+    } else if (this.kind === "shade") {
+      const bag = ["影刺", "连镖", "旋斩"];
+      if (dist > 200) bag.push("连镖", "影刺");
+      if (dist < 120) bag.push("旋斩");
+      if (phase2) bag.push("瞬步");
+      name = bag[Math.floor(Math.random() * bag.length)];
+      if (name === "影刺") {
+        steps = [
+          ...approach,
+          { op: "wind", dur: 0.5 * fast, visual: "dash" },
+          { op: "hit", dur: 0.2, visual: "dash", vx: 420, spec: { damage: d + 2, kb: 240, stun: 0.24, w: 80, h: 50, ox: 60, oy: -62 } },
+          punish(0.56),
+        ];
+      } else if (name === "连镖") {
+        steps = [
+          { op: "wind", dur: 0.52 * fast, visual: "cast" },
+          { op: "dart", dur: 0.12, visual: "cast" },
+          { op: "hold", dur: 0.2, visual: "cast" },
+          { op: "dart", dur: 0.12, visual: "cast" },
+          { op: "hold", dur: 0.2, visual: "cast" },
+          { op: "dart", dur: 0.12, visual: "cast" },
+          punish(0.55),
+        ];
+      } else if (name === "瞬步") {
+        steps = [
+          { op: "wind", dur: 0.42 * fast, visual: "cast" },
+          { op: "blink", dur: 0.12, visual: "dash" },
+          { op: "wind", dur: 0.46 * fast, visual: "slash" },
+          { op: "hit", dur: 0.14, visual: "slash", vx: 80, spec: { damage: d + 3, kb: 200, stun: 0.24, w: 86, h: 54, ox: 64, oy: -66 } },
+          punish(0.58),
+        ];
+      } else {
+        steps = melee(false);
+      }
     } else {
-      steps = slash(false);
+      const bag = ["横斩", "突进", "弧月"];
+      if (dist > 220) bag.push("弧月", "突进");
+      if (dist < 140) bag.push("横斩");
+      if (phase2) bag.push("震地", "连斩");
+      name = bag[Math.floor(Math.random() * bag.length)];
+      if (name === "突进") {
+        steps = [
+          ...approach,
+          { op: "wind", dur: 0.58 * fast, visual: "dash" },
+          { op: "hit", dur: 0.3, visual: "dash", vx: 460, spec: { damage: d + 3, kb: 280, stun: 0.3, w: 88, h: 62, ox: 66, oy: -70 } },
+          punish(0.62),
+        ];
+      } else if (name === "弧月") {
+        steps = [
+          { op: "wind", dur: 0.55 * fast, visual: "cast" },
+          { op: "shot", dur: 0.2, visual: "cast" },
+          punish(0.56),
+        ];
+      } else if (name === "震地") {
+        steps = [
+          { op: "wind", dur: 0.7 * fast, visual: "slam" },
+          { op: "slam", dur: 0.24, visual: "slam", vx: 220 },
+          punish(0.66),
+        ];
+      } else if (name === "连斩") {
+        steps = melee(true);
+      } else {
+        steps = melee(false);
+      }
     }
     this.callout = name;
     this.script = steps;
@@ -650,7 +809,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     }
     if (this.mode === "active") {
       this.visual = visual;
-      this.visualT = 0.75;
+      this.visualT = 0.62;
       this.setVelocityX(this.facing * 36);
       this.timer -= dt;
       if (this.swing) this.swing.rect = this.rectOf(spec);
@@ -825,7 +984,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   }
 
   private maybeHop(): void {
-    if (this.kind === "boss" && this.mode !== "move") return;
+    if (isBossKind(this.kind) && this.mode !== "move") return;
     const body = this.body as Phaser.Physics.Arcade.Body;
     if ((body.blocked.left || body.blocked.right) && body.blocked.down && this.hopCd <= 0 && this.mode === "move") {
       this.setVelocityY(TUNING.jumpV * 0.9);
@@ -864,6 +1023,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       return;
     }
     if (this.mode === "wind" && !this.dead) this.setTint(0xff9a9a);
+    else if (this.enraged && this.kind === "wisp" && !this.dead) this.setTint(0xffc07a);
+    else if (this.enraged && this.kind === "shade" && !this.dead) this.setTint(0xb0ffc8);
     else if (this.enraged && !this.dead) this.setTint(0xffb088);
     else if (this.elite === "armored" && !this.dead) this.setTint(0xb7d4ff);
     else if (this.elite === "enraged" && !this.dead) this.setTint(0xff8866);
@@ -882,10 +1043,12 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.setFlipX(this.facing < 0);
     this.marker.setPosition(this.x, this.y - this.markH);
     const eliteMark = this.elite === "armored" ? "甲" : this.elite === "enraged" ? "怒" : this.elite === "split" ? "裂" : this.guard > 0 ? "盾" : "";
-    if (this.kind === "boss") this.marker.setText(this.callout);
+    if (isBossKind(this.kind)) this.marker.setText(this.callout);
     else if (this.mode === "wind") this.marker.setText("!");
     else this.marker.setText(eliteMark);
-    this.marker.setVisible(!this.dead && (this.mode === "wind" || eliteMark !== ""));
+    const bossCall = isBossKind(this.kind) && this.callout !== "" && this.script.length > 0;
+    this.marker.setVisible(!this.dead && (this.mode === "wind" || eliteMark !== "" || bossCall));
+    this.marker.setColor(this.mode === "wind" ? "#ffd2d2" : "#f6edd8");
     this.setDepth(10 + this.y * 0.0001);
   }
 

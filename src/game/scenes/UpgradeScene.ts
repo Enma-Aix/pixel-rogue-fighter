@@ -5,7 +5,7 @@ import { publish } from "../live";
 import { applyUpgrade, completeNode, currentNode, getRun, noteClear } from "../run";
 import { ARCH_NAME, RARITY_NAME, rollChoices, UPGRADES } from "../upgrades";
 import type { UpgradeId } from "../types";
-import { FONT, justDown, label } from "../ui";
+import { FONT, justDown, label, paintPanel } from "../ui";
 
 export class UpgradeScene extends Phaser.Scene {
   private index = 0;
@@ -111,10 +111,12 @@ export class UpgradeScene extends Phaser.Scene {
     this.choices.forEach((_, index) => {
       const x = 180 + index * 250;
       const selected = index === this.index;
-      this.gfx.fillStyle(selected ? 0x5a3e22 : 0x161018, 0.92);
-      this.gfx.fillRoundedRect(x - 115, 200, 230, 280, 12);
-      this.gfx.lineStyle(3, selected ? 0xffe08a : 0xe2c27a, 1);
-      this.gfx.strokeRoundedRect(x - 115, 200, 230, 280, 12);
+      const id = this.choices[index];
+      const rarity = id ? UPGRADES[id].rarity : "common";
+      const stripe = rarity === "rare" ? 0xe6b15c : rarity === "uncommon" ? 0x8fd0ff : 0xcbb89a;
+      paintPanel(this.gfx, x - 115, 200, 230, 280, selected ? 0x5a3e22 : 0x161018, selected ? 0xffe08a : 0xe2c27a, selected);
+      this.gfx.fillStyle(stripe, 1);
+      this.gfx.fillRect(x - 107, 208, 214, 6);
     });
   }
 

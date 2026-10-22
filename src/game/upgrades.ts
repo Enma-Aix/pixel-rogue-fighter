@@ -17,20 +17,20 @@ export const META: Record<MetaId, MetaDef> = {
   hp: {
     id: "hp",
     name: "体质",
-    desc: "最大生命 +14",
+    desc: "最大生命 +16",
     max: 8,
     base: 24,
     growth: 1.55,
-    detail: (level) => `当前最大生命 ${100 + level * 14}`,
+    detail: (level) => `当前最大生命 ${100 + level * 16}`,
   },
   atk: {
     id: "atk",
     name: "力量",
-    desc: "攻击 +8%",
+    desc: "攻击 +10%",
     max: 8,
     base: 28,
     growth: 1.55,
-    detail: (level) => `当前攻击 ${Math.round((1 + level * 0.08) * 100)}%`,
+    detail: (level) => `当前攻击 ${Math.round((1 + level * 0.1) * 100)}%`,
   },
   agi: {
     id: "agi",
@@ -305,7 +305,7 @@ export function modsFrom(run: RunState): Mods {
   const save = loadSave();
   const mods = defaultMods();
   const lv = save.levels;
-  mods.atk += 0.08 * lv.atk;
+  mods.atk += 0.1 * lv.atk;
   mods.move += 0.04 * lv.agi;
   mods.dodgeCd *= Math.max(0.55, 1 - 0.05 * lv.agi);
   mods.specialDmg += 0.12 * lv.special;
@@ -357,12 +357,12 @@ export interface ShopOffer {
 
 export function priceOf(id: UpgradeId, act: number): number {
   const rarity = UPGRADES[id].rarity;
-  const base = rarity === "rare" ? 52 : rarity === "uncommon" ? 34 : 22;
-  return base + act * (rarity === "rare" ? 8 : 5);
+  const base = rarity === "rare" ? 46 : rarity === "uncommon" ? 30 : 20;
+  return base + act * (rarity === "rare" ? 6 : 4);
 }
 
 export function healPrice(act: number): number {
-  return 18 + act * 4;
+  return 14 + act * 3;
 }
 
 export function shopOffers(run: RunState, salt: number): ShopOffer[] {
@@ -387,22 +387,27 @@ export interface EnemyStats {
 }
 
 export function enemyStats(kind: EnemyKind, stage: number): EnemyStats {
-  const t = 1 + (stage - 1) * 0.12;
+  const t = 1 + (stage - 1) * 0.14;
+  const d = 1 + (stage - 1) * 0.1;
   switch (kind) {
     case "grunt":
-      return { hp: Math.round(38 * t), dmg: Math.round(8 * (1 + (stage - 1) * 0.08)), speed: 88 + stage * 6, gold: 6, name: "步卒" };
+      return { hp: Math.round(34 * t), dmg: Math.round(7 * d), speed: 86 + stage * 4, gold: 4, name: "步卒" };
     case "archer":
-      return { hp: Math.round(30 * t), dmg: Math.round(8 * (1 + (stage - 1) * 0.08)), speed: 72, gold: 8, name: "弓手" };
+      return { hp: Math.round(26 * t), dmg: Math.round(7 * d), speed: 70, gold: 5, name: "弓手" };
     case "brute":
-      return { hp: Math.round(92 * t), dmg: Math.round(15 * (1 + (stage - 1) * 0.08)), speed: 62, gold: 14, name: "重甲" };
+      return { hp: Math.round(78 * t), dmg: Math.round(12 * d), speed: 60, gold: 8, name: "重甲" };
     case "shield":
-      return { hp: Math.round(52 * t), dmg: Math.round(9 * (1 + (stage - 1) * 0.08)), speed: 64, gold: 10, name: "盾卫" };
+      return { hp: Math.round(46 * t), dmg: Math.round(8 * d), speed: 62, gold: 6, name: "盾卫" };
     case "bomber":
-      return { hp: Math.round(28 * t), dmg: Math.round(10 * (1 + (stage - 1) * 0.08)), speed: 68, gold: 10, name: "火师" };
+      return { hp: Math.round(24 * t), dmg: Math.round(9 * d), speed: 66, gold: 6, name: "火师" };
     case "leaper":
-      return { hp: Math.round(26 * t), dmg: Math.round(11 * (1 + (stage - 1) * 0.08)), speed: 150, gold: 11, name: "影刺" };
+      return { hp: Math.round(24 * t), dmg: Math.round(9 * d), speed: 142, gold: 6, name: "影刺" };
+    case "wisp":
+      return { hp: 220, dmg: 11, speed: 62, gold: 14, name: "灯魂" };
+    case "shade":
+      return { hp: 270, dmg: 12, speed: 88, gold: 20, name: "竹客" };
     case "boss":
-      return { hp: 390, dmg: 14, speed: 78, gold: 80, name: "残将" };
+      return { hp: 330, dmg: 13, speed: 70, gold: 28, name: "残将" };
     default: {
       const never: never = kind;
       return never;

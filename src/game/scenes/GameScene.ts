@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { audio } from "../audio";
+import { BOSS_CARD, isBossKind } from "../bosses";
 import { GAME_HEIGHT, GAME_WIDTH, GROUND_Y, STAGE_LOOK, TUNING, rectsOverlap } from "../constants";
 import { Enemy } from "../entities/enemy";
 import { Player } from "../entities/player";
@@ -7,11 +8,11 @@ import { spawnAfterimage, spawnDust, spawnSlash, spawnSpark, floatText } from ".
 import { Hud } from "../hud";
 import { buildRoom } from "../levels";
 import { publish } from "../live";
-import { currentNode, getRun, type RunState } from "../run";
+import { currentNode, getRun, noteClear, type RunState } from "../run";
 import { defaultMods, modsFrom, synergyLine, UPGRADES } from "../upgrades";
 import { toggleTouch, touchOn, TouchControls } from "../touch";
 import type { BufferName, EndMode, InputState, LevelData, ShotSpec, Solid, SpawnDef, WorldApi } from "../types";
-import { FONT, justDown } from "../ui";
+import { FONT, justDown, paintPanel } from "../ui";
 
 interface Keys {
   up: Phaser.Input.Keyboard.Key;
@@ -56,8 +57,10 @@ export class GameScene extends Phaser.Scene implements WorldApi {
   private inputState: InputState = { left: false, right: false, jumpHeld: false, buffer: null, bufferT: 0 };
   private touch!: TouchControls;
   private hud!: Hud;
+  private cloud!: Phaser.GameObjects.TileSprite;
   private far!: Phaser.GameObjects.TileSprite;
   private mid!: Phaser.GameObjects.TileSprite;
+  private near!: Phaser.GameObjects.TileSprite;
   private shadows!: Phaser.GameObjects.Graphics;
   private vignette!: Phaser.GameObjects.Graphics;
   private portal!: Phaser.GameObjects.Sprite;
@@ -131,8 +134,10 @@ export class GameScene extends Phaser.Scene implements WorldApi {
     this.cameras.main.setBounds(0, 0, this.level.width, GAME_HEIGHT);
     this.physics.world.setBounds(0, -500, this.level.width, 1400);
     this.add.image(0, 0, `sky-${run.stage}`).setOrigin(0).setScrollFactor(0).setDepth(0);
-    this.far = this.add.tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, `far-${run.stage}`).setOrigin(0).setScrollFactor(0).setDepth(1);
-    this.mid = this.add.tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, `mid-${run.stage}`).setOrigin(0).setScrollFactor(0).setDepth(2);
+    this.cloud = this.add.tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, `cloud-${run.stage}`).setOrigin(0).setScrollFactor(0).setDepth(1);
+    this.far = this.add.tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, `far-${run.stage}`).setOrigin(0).setScrollFactor(0).setDepth(2);
+    this.mid = this.add.tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, `mid-${run.stage}`).setOrigin(0).setScrollFactor(0).setDepth(3);
+    this.near = this.add.tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, `near-${run.stage}`).setOrigin(0).setScrollFactor(0).setDepth(3);
     this.shadows = this.add.graphics().setDepth(7);
     this.add.rectangle(this.level.width / 2, GROUND_Y + 8, this.level.width, 80, look.fog, 0.16).setDepth(6);
 
@@ -333,6 +338,26 @@ export class GameScene extends Phaser.Scene implements WorldApi {
   }
 
   banner(title: string, sub: string): void {
+    const plate = this.add.graphics().setScrollFactor(0).setDepth(239).setAlpha(0);
+    plate.fillStyle(0x140e18, 0.9);
+    plate.fillRect(250, 132, 460, 108);
+    plate.lineStyle(2, 0xe2c27a, 1);
+    plate.strokeRect(250, 132, 460, 108);
+    plate.lineStyle(4, 0xffe08a, 1);
+    plate.beginPath();
+    plate.moveTo(250, 148);
+    plate.lineTo(250, 132);
+    plate.lineTo(266, 132);
+    plate.moveTo(694, 132);
+    plate.lineTo(710, 132);
+    plate.lineTo(710, 148);
+    plate.moveTo(250, 224);
+    plate.lineTo(250, 240);
+    plate.lineTo(266, 240);
+    plate.moveTo(694, 240);
+    plate.lineTo(710, 240);
+    plate.lineTo(710, 224);
+    plate.strokePath();
     const titleText = this.add
       .text(GAME_WIDTH / 2, 168, title, {
         fontFamily: FONT,
@@ -358,12 +383,13 @@ export class GameScene extends Phaser.Scene implements WorldApi {
       .setDepth(240)
       .setAlpha(0);
     this.tweens.add({
-      targets: [titleText, subText],
+      targets: [plate, titleText, subText],
       alpha: 1,
       duration: 180,
       yoyo: true,
-      hold: 980,
+      hold: 1100,
       onComplete: () => {
+        plate.destroy();
         titleText.destroy();
         subText.destroy();
       },
@@ -398,10 +424,14 @@ export class GameScene extends Phaser.Scene implements WorldApi {
     this.run.kills += 1;
     this.float(x, y - 78, `+${gained}`, "#ffd56a");
     audio.play("coin");
-    if (kind === "boss") {
-      this.bossDown = true;
-      this.cameras.main.flash(200, 255, 236, 210);
-      this.shake(150, 0.01);
+    if (isBossKind(kind)) {
+      noteClear();
+      if (this.run.lastHeal > 0) this.player.heal(this.run.lastHeal);
+      if (kind === "boss") {
+        this.bossDown = true;
+        this.cameras.main.flash(200, 255, 236, 210);
+        this.shake(150, 0.01);
+      }
     }
   }
 
@@ -436,8 +466,9 @@ export class GameScene extends Phaser.Scene implements WorldApi {
     this.physics.add.collider(enemy, this.solidsGroup);
     this.enemies.push(enemy);
     this.dust(spawn.x, spawn.y);
-    if (spawn.kind === "boss") {
-      this.banner("残将", "玄甲");
+    if (isBossKind(spawn.kind)) {
+      const card = BOSS_CARD[spawn.kind];
+      this.banner(card.name, `${card.intro} · ${card.introSub}`);
       audio.play("boss");
       this.shake(200, 0.007);
     }
@@ -530,7 +561,7 @@ export class GameScene extends Phaser.Scene implements WorldApi {
         }
       } else if (!this.player.dead && !shot.seen.has("player") && rectsOverlap(shot, this.player.hurtbox())) {
         shot.seen.add("player");
-        this.player.hurt(shot.damage, shot.kb, shot.stun, shot.x, "箭矢");
+        this.player.hurt(shot.damage, shot.kb, shot.stun, shot.x, shot.label ?? "箭矢");
         shot.alive = false;
       }
     }
@@ -583,7 +614,7 @@ export class GameScene extends Phaser.Scene implements WorldApi {
     this.shake(70, 0.004);
     this.sfx("slam");
     if (!this.player.dead && Math.abs(this.player.x - shot.x) < 58 && Math.abs(this.player.y - shot.y) < 80) {
-      this.player.hurt(shot.damage, shot.kb, shot.stun, shot.x, "爆弹");
+      this.player.hurt(shot.damage, shot.kb, shot.stun, shot.x, shot.label ?? "爆弹");
     }
   }
 
@@ -647,13 +678,15 @@ export class GameScene extends Phaser.Scene implements WorldApi {
   private dress(): void {
     this.drawHazards(this.elapsed);
     const scroll = this.cameras.main.scrollX;
-    this.far.tilePositionX = scroll * 0.22;
-    this.mid.tilePositionX = scroll * 0.48;
+    this.cloud.tilePositionX = scroll * 0.06;
+    this.far.tilePositionX = scroll * 0.16;
+    this.mid.tilePositionX = scroll * 0.34;
+    this.near.tilePositionX = scroll * 0.58;
     for (const lamp of this.lanterns) lamp.setFrame(Math.floor(this.elapsed * 6) % 2);
     this.portal.setFrame(Math.floor(this.elapsed * 7) % 4);
     const alive = this.enemies.some((enemy) => !enemy.dead);
     const waiting = this.triggers.some((trigger) => !trigger.fired);
-    this.portalReady = !this.level.boss && !waiting && !alive;
+    this.portalReady = !this.level.finale && !waiting && !alive && !this.bossDown;
     this.portal.setAlpha(this.portalReady ? 1 : 0.3);
     this.portalLabel.setVisible(this.portalReady);
     this.shadows.clear();
@@ -664,7 +697,7 @@ export class GameScene extends Phaser.Scene implements WorldApi {
     stamp(this.player.x, this.player.y, 46, this.player.grounded);
     for (const enemy of this.enemies) {
       const body = enemy.body as Phaser.Physics.Arcade.Body;
-      stamp(enemy.x, enemy.y, enemy.kind === "brute" || enemy.kind === "boss" ? 70 : 42, body.blocked.down);
+      stamp(enemy.x, enemy.y, enemy.kind === "brute" || isBossKind(enemy.kind) ? 70 : 42, body.blocked.down);
     }
     this.vignette.clear();
     if (this.player.hp / this.player.maxHp < 0.3 && !this.player.dead) {
@@ -706,10 +739,10 @@ export class GameScene extends Phaser.Scene implements WorldApi {
 
   private hudModel() {
     const look = STAGE_LOOK[this.run.stage];
-    const boss = this.enemies.find((enemy) => enemy.kind === "boss" && !enemy.dead);
+    const boss = this.enemies.find((enemy) => isBossKind(enemy.kind) && !enemy.dead);
     const names = this.run.upgrades.slice(-4).map((id) => UPGRADES[id].name);
     let objective = "击败沿途敌人";
-    if (boss) objective = "击败残将";
+    if (boss?.card) objective = `击败${boss.card.name}`;
     else if (this.portalReady) objective = "前往出口";
     const hintWindow = 5.4;
     const hint = this.run.stage === 1 && this.elapsed < hintWindow ? "轻 J · 重 K · 闪 L · 奥 U" : "";
@@ -729,7 +762,18 @@ export class GameScene extends Phaser.Scene implements WorldApi {
       hintAlpha,
       combo: this.comboT > 0 ? this.combo : 0,
       upgrades: [synergyLine(this.run.upgrades), names.join("  ")].filter(Boolean).join("  "),
-      boss: boss ? { hp: boss.hp, max: boss.maxHp, rage: boss.raging } : undefined,
+      boss: boss?.card
+        ? {
+            name: boss.card.name,
+            calm: boss.card.calm,
+            rageName: boss.card.rageName,
+            hp: boss.hp,
+            max: boss.maxHp,
+            rage: boss.raging,
+            bar: boss.card.bar,
+            rageBar: boss.card.rageBar,
+          }
+        : undefined,
     };
   }
 
@@ -737,10 +781,7 @@ export class GameScene extends Phaser.Scene implements WorldApi {
     const gfx = this.add.graphics();
     gfx.fillStyle(0x0c0a10, 0.72);
     gfx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-    gfx.fillStyle(0x161018, 0.95);
-    gfx.fillRoundedRect(330, 140, 300, 270, 12);
-    gfx.lineStyle(2, 0xe2c27a, 1);
-    gfx.strokeRoundedRect(330, 140, 300, 270, 12);
+    paintPanel(gfx, 330, 140, 300, 270, 0x161018);
     this.pauseTitle = this.add
       .text(480, 190, "暂停", { fontFamily: FONT, fontSize: "36px", color: "#f6edd4" })
       .setOrigin(0.5);

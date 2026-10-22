@@ -4,7 +4,7 @@ import { publish } from "../live";
 import { loadSave, type Save } from "../storage";
 import type { EndMode, MetaId } from "../types";
 import { META, META_ORDER, metaCost, tryBuy } from "../upgrades";
-import { FONT, justDown, label } from "../ui";
+import { FONT, justDown, label, paintPanel } from "../ui";
 
 export class ShopScene extends Phaser.Scene {
   private back: "menu" | "summary" = "menu";
@@ -88,18 +88,14 @@ export class ShopScene extends Phaser.Scene {
     META_ORDER.forEach((id, index) => {
       const y = 160 + index * 62;
       const selected = index === this.index;
-      this.gfx.fillStyle(selected ? 0x5a3e22 : 0x1b1520, 0.95);
-      this.gfx.fillRoundedRect(110, y - 26, 740, 52, 8);
-      this.gfx.lineStyle(2, selected ? 0xffe08a : 0x8a7044, 1);
-      this.gfx.strokeRoundedRect(110, y - 26, 740, 52, 8);
+      paintPanel(this.gfx, 110, y - 26, 740, 52, selected ? 0x5a3e22 : 0x1b1520, selected ? 0xffe08a : 0x8a7044, selected);
       const def = META[id];
       const level = save.levels[id];
       const maxed = level >= def.max;
       const cost = maxed ? "已满" : `${metaCost(id, level)} 金`;
       this.lines[index].setText(`${def.name}  Lv ${level}/${def.max}    ${def.desc}    ${def.detail(level)}    ${cost}`);
     });
-    this.gfx.lineStyle(2, this.index === META_ORDER.length ? 0xffe08a : 0x8a7044, 1);
-    this.gfx.strokeRoundedRect(370, 466, 220, 48, 8);
+    paintPanel(this.gfx, 370, 466, 220, 48, 0x1b1520, this.index === META_ORDER.length ? 0xffe08a : 0x8a7044, this.index === META_ORDER.length);
     publish("shop", {
       gold: save.gold,
       levels: save.levels,
@@ -108,8 +104,8 @@ export class ShopScene extends Phaser.Scene {
   }
 
   private preview(save: Save): string {
-    const hp = 100 + save.levels.hp * 14;
-    const atk = Math.round((1 + save.levels.atk * 0.08) * 100);
+    const hp = 100 + save.levels.hp * 16;
+    const atk = Math.round((1 + save.levels.atk * 0.1) * 100);
     return `生命 ${hp}  攻击 ${atk}%`;
   }
 

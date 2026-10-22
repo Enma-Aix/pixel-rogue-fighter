@@ -37,7 +37,7 @@ interface Style {
   cape?: string;
   bulk: number;
   head: "hair" | "helmet" | "hood" | "horns";
-  weapon: "sword" | "spear" | "hammer" | "bow" | "greatsword";
+  weapon: "sword" | "spear" | "hammer" | "bow" | "greatsword" | "lantern";
   scarf?: boolean;
   eye: string;
   glow: string;
@@ -62,74 +62,66 @@ interface Skel {
   arm: number;
 }
 
+const MELEE_SHEET = {
+  idle: { start: 0, count: 4 },
+  run: { start: 4, count: 6 },
+  attack: { start: 10, count: 4 },
+  hit: { start: 14, count: 2 },
+  dead: { start: 16, count: 2 },
+};
+
+const BOW_SHEET = {
+  idle: { start: 0, count: 4 },
+  run: { start: 4, count: 6 },
+  attack: { start: 10, count: 4 },
+  hit: { start: 14, count: 2 },
+  dead: { start: 16, count: 2 },
+};
+
+const BRUTE_SHEET = {
+  idle: { start: 0, count: 4 },
+  run: { start: 4, count: 6 },
+  charge: { start: 10, count: 3 },
+  slam: { start: 13, count: 4 },
+  hit: { start: 17, count: 2 },
+  dead: { start: 19, count: 2 },
+};
+
+const BOSS_SHEET = {
+  idle: { start: 0, count: 4 },
+  run: { start: 4, count: 4 },
+  slash: { start: 8, count: 4 },
+  dash: { start: 12, count: 3 },
+  cast: { start: 15, count: 3 },
+  slam: { start: 18, count: 4 },
+  hit: { start: 22, count: 2 },
+  dead: { start: 24, count: 2 },
+};
+
 export const SHEET: Record<string, Record<string, { start: number; count: number }>> = {
   player: {
-    idle: { start: 0, count: 4 },
-    run: { start: 4, count: 4 },
-    jump: { start: 8, count: 1 },
-    fall: { start: 9, count: 1 },
-    l1: { start: 10, count: 3 },
-    l2: { start: 13, count: 3 },
-    heavy: { start: 16, count: 4 },
-    air: { start: 20, count: 2 },
-    dodge: { start: 22, count: 2 },
-    special: { start: 24, count: 2 },
-    hit: { start: 26, count: 1 },
-    dead: { start: 27, count: 1 },
+    idle: { start: 0, count: 6 },
+    run: { start: 6, count: 6 },
+    jump: { start: 12, count: 2 },
+    fall: { start: 14, count: 2 },
+    l1: { start: 16, count: 4 },
+    l2: { start: 20, count: 4 },
+    heavy: { start: 24, count: 5 },
+    air: { start: 29, count: 3 },
+    dodge: { start: 32, count: 3 },
+    special: { start: 35, count: 3 },
+    hit: { start: 38, count: 2 },
+    dead: { start: 40, count: 2 },
   },
-  grunt: {
-    idle: { start: 0, count: 2 },
-    run: { start: 2, count: 4 },
-    attack: { start: 6, count: 3 },
-    hit: { start: 9, count: 1 },
-    dead: { start: 10, count: 1 },
-  },
-  shield: {
-    idle: { start: 0, count: 2 },
-    run: { start: 2, count: 4 },
-    attack: { start: 6, count: 3 },
-    hit: { start: 9, count: 1 },
-    dead: { start: 10, count: 1 },
-  },
-  leaper: {
-    idle: { start: 0, count: 2 },
-    run: { start: 2, count: 4 },
-    attack: { start: 6, count: 3 },
-    hit: { start: 9, count: 1 },
-    dead: { start: 10, count: 1 },
-  },
-  archer: {
-    idle: { start: 0, count: 2 },
-    run: { start: 2, count: 4 },
-    attack: { start: 6, count: 3 },
-    hit: { start: 9, count: 1 },
-    dead: { start: 10, count: 1 },
-  },
-  bomber: {
-    idle: { start: 0, count: 2 },
-    run: { start: 2, count: 4 },
-    attack: { start: 6, count: 3 },
-    hit: { start: 9, count: 1 },
-    dead: { start: 10, count: 1 },
-  },
-  brute: {
-    idle: { start: 0, count: 2 },
-    run: { start: 2, count: 4 },
-    charge: { start: 6, count: 2 },
-    slam: { start: 8, count: 3 },
-    hit: { start: 11, count: 1 },
-    dead: { start: 12, count: 1 },
-  },
-  boss: {
-    idle: { start: 0, count: 2 },
-    run: { start: 2, count: 4 },
-    slash: { start: 6, count: 4 },
-    dash: { start: 10, count: 2 },
-    cast: { start: 12, count: 2 },
-    slam: { start: 14, count: 3 },
-    hit: { start: 17, count: 1 },
-    dead: { start: 18, count: 1 },
-  },
+  grunt: MELEE_SHEET,
+  shield: MELEE_SHEET,
+  leaper: MELEE_SHEET,
+  archer: BOW_SHEET,
+  bomber: BOW_SHEET,
+  brute: BRUTE_SHEET,
+  wisp: BOSS_SHEET,
+  shade: BOSS_SHEET,
+  boss: BOSS_SHEET,
 };
 
 export function loopFrame(id: string, anim: string, time: number, fps: number): number {
@@ -282,6 +274,46 @@ const STYLES: Record<string, Style> = {
     eye: "#1a1020",
     glow: "#e8b0ff",
   },
+  wisp: {
+    skin: "#f0d2b4",
+    hair: "#2a140c",
+    cloth: "#8a3a22",
+    clothDark: "#5a2414",
+    pants: "#3a2218",
+    boot: "#2a1810",
+    metal: "#f0d090",
+    metalDark: "#a06830",
+    accent: "#ffb45a",
+    blade: "#ffe6b0",
+    wood: "#c48448",
+    outline: "#160e0c",
+    cape: "#6a2418",
+    bulk: 1.05,
+    head: "hood",
+    weapon: "lantern",
+    eye: "#3a1408",
+    glow: "#ffe08a",
+  },
+  shade: {
+    skin: "#d7c0a8",
+    hair: "#101810",
+    cloth: "#1e4a38",
+    clothDark: "#10281e",
+    pants: "#142018",
+    boot: "#101610",
+    metal: "#c8d8c4",
+    metalDark: "#4a6858",
+    accent: "#8fd0a4",
+    blade: "#e8ffe8",
+    wood: "#6a5038",
+    outline: "#0c1410",
+    bulk: 0.9,
+    head: "hood",
+    weapon: "sword",
+    scarf: true,
+    eye: "#102018",
+    glow: "#b0ffc8",
+  },
   boss: {
     skin: "#efc2a4",
     hair: "#140e18",
@@ -432,6 +464,16 @@ function skeleton(style: Style, pose: Pose): Skel {
 }
 
 function drawWeapon(buf: Buf, style: Style, pose: Pose, hand: { x: number; y: number }): void {
+  if (style.weapon === "lantern") {
+    const angle = pose.weapon ?? -0.4;
+    const len = 12;
+    const x2 = hand.x + Math.cos(angle) * len;
+    const y2 = hand.y + Math.sin(angle) * len;
+    stampLine(buf, hand.x, hand.y, x2, y2, 1.15, style.wood);
+    stampDisc(buf, x2, y2, 3.4, style.accent);
+    stampDisc(buf, x2, y2, 1.7, pose.glow ? "#fff6d0" : style.glow);
+    return;
+  }
   if (style.weapon === "bow") {
     const pull = pose.pull ?? 1;
     const x = hand.x + 1;
@@ -596,106 +638,149 @@ function p(partial: Pose): Pose {
   return partial;
 }
 
-const RUN: Pose[] = [
-  p({ lean: 2, frontArm: -28, backArm: 36, frontFootX: 8, backFootX: -7, backFootY: -3, weapon: 0.95, bob: 0 }),
-  p({ lean: 2, frontArm: 8, backArm: 8, frontFootX: 2, frontFootY: -1, backFootX: -1, weapon: 1.05, bob: 1 }),
-  p({ lean: 2, frontArm: 38, backArm: -34, frontFootX: -6, frontFootY: -3, backFootX: 8, weapon: 1.15, bob: 0 }),
-  p({ lean: 2, frontArm: 6, backArm: -8, frontFootX: 0, backFootX: 3, backFootY: -2, weapon: 1.05, bob: 1 }),
-];
-
 function idle(n: number, weapon = 1.05): Pose[] {
   return Array.from({ length: n }, (_, i) =>
     p({
-      bob: [0, 0.7, 0, -0.4][i % 4],
-      frontArm: 18,
-      backArm: -12,
-      weapon,
-      frontFootX: 3.5,
-      backFootX: -3.5,
-      scarfT: i,
+      bob: [0, 1.1, 1.6, 0.6, 0, -0.5][i % 6],
+      frontArm: 16 + (i % 3) * 6,
+      backArm: -14,
+      weapon: weapon + (i % 2) * 0.12,
+      frontFootX: 3.6,
+      backFootX: -3.8,
+      lean: i % 2 ? 0.6 : -0.3,
+      scarfT: i * 0.8,
     }),
   );
 }
 
-function posesFor(id: string): Pose[] {
-  if (id === "player") {
-    return [
-      ...idle(4, 1.02).map((pose, i) => ({ ...pose, scarfT: i * 0.8 })),
-      ...RUN.map((pose, i) => ({ ...pose, scarfT: i })),
-      p({ frontArm: 150, backArm: 164, frontFootX: 4, frontFootY: -6, backFootX: -3, backFootY: -5, weapon: -0.7, lean: 1, scarfT: 1 }),
-      p({ frontArm: 36, backArm: -16, frontFootX: 3, frontFootY: 1, backFootX: -4, backFootY: 2, weapon: 0.45, lean: 1, scarfT: 2 }),
-      p({ lean: -3, frontArm: 168, backArm: 20, weapon: -2.25, frontFootX: 2, backFootX: -5, scarfT: 0 }),
-      p({ lean: 3, frontArm: 78, backArm: -8, weapon: -0.3, frontFootX: 7, backFootX: -3, scarfT: 1 }),
-      p({ lean: 2, frontArm: 24, backArm: -18, weapon: 0.75, frontFootX: 6, backFootX: -4, bob: 1, scarfT: 2 }),
-      p({ lean: 3, frontArm: 18, weapon: 1.15, frontFootX: 6, backFootX: -2, scarfT: 0 }),
-      p({ lean: -1, frontArm: 104, weapon: -0.1, frontFootX: 3, backFootX: -5, scarfT: 1 }),
-      p({ lean: -3, frontArm: 156, weapon: -1.4, frontFootX: 1, backFootX: -6, scarfT: 2 }),
-      p({ lean: -3, frontArm: 172, weapon: -1.7, bob: 1, frontFootX: 1, backFootX: -4, scarfT: 0 }),
-      p({ lean: -4, frontArm: 196, weapon: -2.35, bob: 2, frontFootX: 0, backFootX: -5, scarfT: 1 }),
-      p({ lean: 5, frontArm: 34, weapon: 0.55, frontFootX: 9, backFootX: -2, scarfT: 2 }),
-      p({ lean: 3, frontArm: 12, weapon: 1.05, bob: 1, frontFootX: 6, backFootX: -3, scarfT: 3 }),
-      p({ frontArm: 138, weapon: -1.05, frontFootX: 4, frontFootY: -5, backFootX: -3, backFootY: -4, scarfT: 0 }),
-      p({ lean: 3, frontArm: 28, weapon: 0.5, frontFootX: 6, frontFootY: -2, backFootX: -2, backFootY: -2, scarfT: 1 }),
-      p({ bob: 7, lean: 5, frontArm: 48, backArm: 40, frontFootX: 7, frontFootY: -2, backFootX: -1, weapon: 0.8, scarfT: 1 }),
-      p({ bob: 8, lean: 7, frontArm: 70, backArm: 54, frontFootX: 9, backFootX: 1, weapon: 0.45, scarfT: 2 }),
-      p({ lean: -2, frontArm: 96, weapon: -0.05, frontFootX: 3, backFootX: -4, scarfT: 0 }),
-      p({ lean: 2, frontArm: 90, weapon: 0, frontFootX: 6, backFootX: -3, glow: true, scarfT: 1 }),
-      p({ lean: -6, frontArm: -16, backArm: -36, weapon: 1.4, headX: -2, bob: 1, frontFootX: -1, backFootX: -6, scarfT: 2 }),
-      p({ prone: true }),
-    ];
-  }
-  if (id === "grunt" || id === "shield" || id === "leaper") {
-    return [
-      ...idle(2, 0.15),
-      ...RUN.map((pose) => ({ ...pose, weapon: 0.2 })),
-      p({ lean: -2, frontArm: 70, weapon: -0.45, frontFootX: 2, backFootX: -4 }),
-      p({ lean: 4, frontArm: 92, weapon: 0.05, frontFootX: 7, backFootX: -2 }),
-      p({ lean: 3, frontArm: 88, weapon: 0.12, frontFootX: 6, backFootX: -3 }),
-      p({ lean: -5, frontArm: 10, weapon: 0.8, headX: -1 }),
-      p({ prone: true }),
-    ];
-  }
-  if (id === "archer" || id === "bomber") {
-    return [
-      ...idle(2, 0).map((pose) => ({ ...pose, pull: 1, frontArm: 80 })),
-      ...RUN.map((pose) => ({ ...pose, pull: 1, frontArm: 70, weapon: 0 })),
-      p({ pull: 1.2, frontArm: 82, lean: 0, frontFootX: 3, backFootX: -3 }),
-      p({ pull: 3.4, frontArm: 74, lean: -2, frontFootX: 2, backFootX: -4 }),
-      p({ pull: 6, frontArm: 64, lean: -3, frontFootX: 1, backFootX: -5 }),
-      p({ lean: -5, pull: 1, frontArm: 40, headX: -1 }),
-      p({ prone: true }),
-    ];
-  }
-  if (id === "brute") {
-    return [
-      ...idle(2, -1.2),
-      ...RUN.map((pose) => ({ ...pose, weapon: -0.8 })),
-      p({ lean: -4, frontArm: 160, weapon: -1.5, bob: 1, frontFootX: 2, backFootX: -5 }),
-      p({ lean: 6, frontArm: 46, weapon: 0.25, frontFootX: 8, backFootX: -1 }),
-      p({ lean: -4, frontArm: 190, weapon: -2.2, bob: 2, frontFootX: 1, backFootX: -4 }),
-      p({ lean: 2, frontArm: 24, weapon: 1.25, bob: 3, frontFootX: 5, backFootX: -2 }),
-      p({ lean: 1, frontArm: 14, weapon: 1.4, bob: 2, frontFootX: 4, backFootX: -2 }),
-      p({ lean: -5, frontArm: 20, weapon: 0.9 }),
-      p({ prone: true }),
-    ];
-  }
+function stride(weapon: number): Pose[] {
   return [
-    ...idle(2, -1.4),
-    ...RUN.map((pose) => ({ ...pose, weapon: -0.9 })),
-    p({ lean: -3, frontArm: 168, weapon: -2.1, bob: 1 }),
-    p({ lean: 2, frontArm: 90, weapon: -0.45, frontFootX: 6 }),
-    p({ lean: 4, frontArm: 40, weapon: 0.35, frontFootX: 8 }),
-    p({ lean: 2, frontArm: 18, weapon: 0.9, bob: 1 }),
-    p({ lean: -2, frontArm: 100, weapon: -0.1 }),
-    p({ lean: 3, frontArm: 88, weapon: 0.05, frontFootX: 6, glow: true }),
-    p({ lean: -3, frontArm: 96, weapon: -0.2, glow: true }),
-    p({ lean: 1, frontArm: 90, weapon: 0, glow: true }),
-    p({ lean: -4, frontArm: 188, weapon: -2.3, bob: 2 }),
-    p({ lean: 3, frontArm: 30, weapon: 1.15, bob: 3, frontFootX: 5 }),
-    p({ lean: 1, frontArm: 16, weapon: 1.35, bob: 2 }),
-    p({ lean: -6, frontArm: 8, weapon: 1.1, headX: -2 }),
-    p({ prone: true }),
+    p({ lean: 4, frontArm: -42, backArm: 56, frontFootX: 12, backFootX: -10, backFootY: -5, weapon, bob: 0, scarfT: 0 }),
+    p({ lean: 4, frontArm: -6, backArm: 16, frontFootX: 4, frontFootY: -2, backFootX: -1, weapon: weapon + 0.12, bob: 2, scarfT: 1 }),
+    p({ lean: 5, frontArm: 26, backArm: -22, frontFootX: -2, frontFootY: -7, backFootX: 7, backFootY: -2, weapon: weapon + 0.2, bob: 1, scarfT: 2 }),
+    p({ lean: 4, frontArm: 52, backArm: -48, frontFootX: -11, backFootX: 11, weapon: weapon + 0.28, bob: 0, scarfT: 3 }),
+    p({ lean: 4, frontArm: 14, backArm: -8, frontFootX: -3, frontFootY: -2, backFootX: 3, weapon: weapon + 0.12, bob: 2, scarfT: 4 }),
+    p({ lean: 5, frontArm: -18, backArm: 26, frontFootX: 5, frontFootY: -6, backFootX: -6, backFootY: -3, weapon, bob: 1, scarfT: 5 }),
   ];
+}
+
+function thrust(weapon: number): Pose[] {
+  return [
+    p({ lean: -5, frontArm: 168, weapon: weapon - 1.6, frontFootX: 1, backFootX: -7, scarfT: 0 }),
+    p({ lean: 0, frontArm: 96, weapon: weapon - 0.35, frontFootX: 5, backFootX: -3, scarfT: 1 }),
+    p({ lean: 6, frontArm: 22, weapon: weapon + 0.75, frontFootX: 11, backFootX: -1, scarfT: 2 }),
+    p({ lean: 3, frontArm: 14, weapon: weapon + 0.35, frontFootX: 7, backFootX: -3, bob: 1, scarfT: 3 }),
+  ];
+}
+
+function hurtPair(weapon: number): Pose[] {
+  return [
+    p({ lean: -7, frontArm: -8, backArm: -28, weapon: weapon + 0.8, headX: -2, bob: 1, frontFootX: -2, backFootX: -7 }),
+    p({ lean: -4, frontArm: 10, backArm: -12, weapon: weapon + 0.4, headX: -1, bob: 2, frontFootX: 0, backFootX: -5 }),
+  ];
+}
+
+function deadPair(): Pose[] {
+  return [p({ lean: -8, bob: 6, frontArm: 12, weapon: 1.1, frontFootX: 2, backFootX: -4 }), p({ prone: true })];
+}
+
+function playerPoses(): Pose[] {
+  return [
+    ...idle(6, 1.02),
+    ...stride(0.9),
+    p({ lean: 1, frontArm: 156, backArm: 170, frontFootX: 5, frontFootY: -9, backFootX: -4, backFootY: -8, weapon: -1.05, scarfT: 1 }),
+    p({ lean: 2, frontArm: 172, backArm: 148, frontFootX: 3, frontFootY: -4, backFootX: -2, backFootY: -3, weapon: -0.35, bob: -1, scarfT: 2 }),
+    p({ lean: 1, frontArm: 42, backArm: -36, frontFootX: 4, frontFootY: 2, backFootX: -5, backFootY: 3, weapon: 0.35, scarfT: 2 }),
+    p({ lean: 2, frontArm: 24, backArm: -52, frontFootX: 6, frontFootY: 3, backFootX: -7, backFootY: 2, weapon: 0.75, scarfT: 3 }),
+    ...thrust(0.15),
+    p({ lean: -4, frontArm: 164, weapon: -2.05, frontFootX: 1, backFootX: -7, scarfT: 0 }),
+    p({ lean: 1, frontArm: 108, weapon: -0.45, frontFootX: 5, backFootX: -3, scarfT: 1 }),
+    p({ lean: 5, frontArm: 26, weapon: 0.7, frontFootX: 9, backFootX: -1, scarfT: 2 }),
+    p({ lean: 2, frontArm: 14, weapon: 1.1, bob: 1, frontFootX: 6, backFootX: -3, scarfT: 3 }),
+    p({ lean: -6, frontArm: 188, weapon: -2.55, bob: 1, frontFootX: 0, backFootX: -7, scarfT: 0 }),
+    p({ lean: -3, frontArm: 164, weapon: -1.9, bob: 2, frontFootX: 1, backFootX: -5, scarfT: 1 }),
+    p({ lean: 2, frontArm: 72, weapon: -0.15, frontFootX: 6, backFootX: -2, scarfT: 2 }),
+    p({ lean: 7, frontArm: 18, weapon: 1.05, frontFootX: 12, backFootX: -1, scarfT: 3 }),
+    p({ lean: 3, frontArm: 12, weapon: 1.25, bob: 1, frontFootX: 7, backFootX: -3, scarfT: 4 }),
+    p({ frontArm: 150, weapon: -1.25, frontFootX: 4, frontFootY: -7, backFootX: -3, backFootY: -6, scarfT: 0 }),
+    p({ lean: 3, frontArm: 48, weapon: 0.15, frontFootX: 7, frontFootY: -3, backFootX: -2, backFootY: -2, scarfT: 1 }),
+    p({ lean: 5, frontArm: 16, weapon: 0.95, frontFootX: 9, frontFootY: -1, backFootX: -1, scarfT: 2 }),
+    p({ bob: 3, lean: 6, frontArm: 28, backArm: 20, frontFootX: 6, frontFootY: -1, backFootX: -1, weapon: 1.05, scarfT: 1 }),
+    p({ bob: 9, lean: 8, frontArm: 78, backArm: 62, frontFootX: 12, backFootX: 2, weapon: 0.3, scarfT: 2 }),
+    p({ bob: 4, lean: 4, frontArm: 46, backArm: 30, frontFootX: 7, backFootX: 0, weapon: 0.75, scarfT: 3 }),
+    p({ lean: -3, frontArm: 118, weapon: -0.85, frontFootX: 2, backFootX: -5, scarfT: 0 }),
+    p({ lean: 1, frontArm: 92, weapon: -0.1, frontFootX: 4, backFootX: -3, glow: true, scarfT: 1 }),
+    p({ lean: 5, frontArm: 24, weapon: 0.75, frontFootX: 9, backFootX: -2, glow: true, scarfT: 2 }),
+    ...hurtPair(0.4),
+    ...deadPair(),
+  ];
+}
+
+function meleePoses(weapon: number): Pose[] {
+  return [...idle(4, weapon), ...stride(weapon), ...thrust(weapon), ...hurtPair(weapon), ...deadPair()];
+}
+
+function bowPoses(): Pose[] {
+  const drawn = idle(4, 0).map((pose) => ({ ...pose, pull: 1.2, frontArm: 78 }));
+  const moving = stride(0).map((pose) => ({ ...pose, pull: 1, frontArm: 70 }));
+  return [
+    ...drawn,
+    ...moving,
+    p({ pull: 1.5, frontArm: 86, lean: -1, frontFootX: 3, backFootX: -4 }),
+    p({ pull: 4.4, frontArm: 72, lean: -4, frontFootX: 2, backFootX: -6 }),
+    p({ pull: 6.6, frontArm: 58, lean: -5, frontFootX: 1, backFootX: -7 }),
+    p({ pull: 0.8, frontArm: 40, lean: 3, frontFootX: 6, backFootX: -2 }),
+    ...hurtPair(0.2),
+    ...deadPair(),
+  ];
+}
+
+function brutePoses(): Pose[] {
+  return [
+    ...idle(4, -1.15),
+    ...stride(-0.85),
+    p({ lean: -6, frontArm: 170, weapon: -1.85, bob: 1, frontFootX: 1, backFootX: -7 }),
+    p({ lean: -2, frontArm: 132, weapon: -1.05, bob: 2, frontFootX: 4, backFootX: -4 }),
+    p({ lean: 8, frontArm: 30, weapon: 0.2, frontFootX: 13, backFootX: 1 }),
+    p({ lean: -6, frontArm: 198, weapon: -2.55, bob: 2, frontFootX: 0, backFootX: -6 }),
+    p({ lean: 0, frontArm: 86, weapon: -0.25, frontFootX: 5, backFootX: -2 }),
+    p({ lean: 7, frontArm: 16, weapon: 1.3, bob: 4, frontFootX: 10, backFootX: -1 }),
+    p({ lean: 2, frontArm: 12, weapon: 1.45, bob: 1, frontFootX: 6, backFootX: -2 }),
+    ...hurtPair(-0.4),
+    ...deadPair(),
+  ];
+}
+
+function bossPoses(): Pose[] {
+  return [
+    ...idle(4, -1.2),
+    ...stride(-0.95).slice(0, 4),
+    p({ lean: -6, frontArm: 178, weapon: -2.45, bob: 1, frontFootX: 1, backFootX: -7, scarfT: 0 }),
+    p({ lean: -1, frontArm: 118, weapon: -1.05, frontFootX: 4, backFootX: -4, scarfT: 1 }),
+    p({ lean: 7, frontArm: 20, weapon: 0.9, frontFootX: 12, backFootX: -1, scarfT: 2 }),
+    p({ lean: 3, frontArm: 12, weapon: 1.2, bob: 1, frontFootX: 7, backFootX: -3, scarfT: 3 }),
+    p({ lean: -5, frontArm: 156, weapon: -1.9, bob: 2, frontFootX: 2, backFootX: -7 }),
+    p({ lean: 8, frontArm: 36, weapon: 0.15, frontFootX: 13, backFootX: 2, bob: 1 }),
+    p({ lean: 5, frontArm: 18, weapon: 0.75, frontFootX: 8, backFootX: 0 }),
+    p({ lean: -2, frontArm: 104, weapon: -0.45, frontFootX: 3, backFootX: -4, glow: true }),
+    p({ lean: 0, frontArm: 74, weapon: -0.05, frontFootX: 4, backFootX: -3, glow: true }),
+    p({ lean: 4, frontArm: 30, weapon: 0.55, frontFootX: 7, backFootX: -2, glow: true }),
+    p({ lean: -5, frontArm: 194, weapon: -2.6, bob: 2, frontFootX: 1, backFootX: -6 }),
+    p({ lean: -1, frontArm: 150, weapon: -1.7, bob: 3, frontFootX: 2, backFootX: -4 }),
+    p({ lean: 5, frontArm: 18, weapon: 1.25, bob: 4, frontFootX: 9, backFootX: -1 }),
+    p({ lean: 2, frontArm: 12, weapon: 1.4, bob: 1, frontFootX: 5, backFootX: -2 }),
+    ...hurtPair(-0.2),
+    ...deadPair(),
+  ];
+}
+
+function posesFor(id: string): Pose[] {
+  if (id === "player") return playerPoses();
+  if (id === "grunt" || id === "shield") return meleePoses(0.15);
+  if (id === "leaper") return meleePoses(0.35);
+  if (id === "archer" || id === "bomber") return bowPoses();
+  if (id === "brute") return brutePoses();
+  return bossPoses();
 }
 
 function countOf(id: string): number {
@@ -861,6 +946,61 @@ function ruin(ctx: CanvasRenderingContext2D, x: number, ground: number, w: numbe
   ctx.fillRect(x + w - 12, ground - h - 16, 12, 4);
 }
 
+function makeCloud(look: StageLook): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = 640;
+  canvas.height = 540;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+  ctx.clearRect(0, 0, 640, 540);
+  ctx.fillStyle = look.moon;
+  ctx.globalAlpha = 0.28;
+  const blobs = [
+    [40, 78, 86, 14],
+    [220, 120, 110, 16],
+    [430, 64, 74, 12],
+    [540, 150, 64, 10],
+  ];
+  for (const [x, y, w, h] of blobs) {
+    ctx.fillRect(x, y, w, h);
+    ctx.fillRect(x + 10, y - 8, Math.max(12, w - 28), 8);
+  }
+  ctx.globalAlpha = 1;
+  return canvas;
+}
+
+function makeNear(stage: number, look: StageLook): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = 480;
+  canvas.height = 540;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+  ctx.clearRect(0, 0, 480, 540);
+  const ground = 438;
+  if (stage === 1) {
+    for (let i = 0; i < 5; i += 1) {
+      const x = 18 + i * 96;
+      ctx.fillStyle = look.mid;
+      ctx.fillRect(x, ground - 52, 6, 52);
+      ctx.fillStyle = look.accent;
+      ctx.fillRect(x - 14, ground - 52, 34, 4);
+      ctx.fillStyle = look.midHi;
+      ctx.fillRect(x + 28, ground - 18, 3, 18);
+      ctx.fillRect(x + 34, ground - 26, 3, 26);
+      ctx.fillRect(x + 40, ground - 14, 3, 14);
+    }
+  } else if (stage === 2) {
+    for (let i = 0; i < 7; i += 1) {
+      bamboo(ctx, 12 + i * 68, ground, 130 + (i % 2) * 36, i % 2 ? look.midHi : look.mid);
+    }
+  } else {
+    for (let i = 0; i < 4; i += 1) {
+      ruin(ctx, 16 + i * 120, ground, 34, 72 + (i % 2) * 28, look.mid, look.accent);
+    }
+  }
+  return canvas;
+}
+
 function makeGround(look: StageLook): { top: HTMLCanvasElement; fill: HTMLCanvasElement } {
   const top = document.createElement("canvas");
   top.width = 48;
@@ -1018,6 +1158,18 @@ function makeProps(scene: Phaser.Scene): void {
   stampDisc(bomb, 6, 3.2, 1.1, "#ffe08a");
   addCanvas(scene, "bomb", upscale(bomb));
 
+  const lanternShot = createBuf(12, 12);
+  stampDisc(lanternShot, 6, 6, 4.4, "#8a3018");
+  stampDisc(lanternShot, 6, 6, 2.8, "#ffb15a");
+  stampDisc(lanternShot, 6, 6, 1.3, "#fff0c4");
+  addCanvas(scene, "lanternshot", upscale(lanternShot));
+
+  const dart = createBuf(14, 6);
+  stampLine(dart, 1, 3, 10, 3, 0.7, "#6a8f62");
+  stampLine(dart, 9, 1, 13, 3, 0.8, "#d8ffe0");
+  stampLine(dart, 9, 5, 13, 3, 0.8, "#d8ffe0");
+  addCanvas(scene, "dart", upscale(dart));
+
   const crescent = createBuf(16, 12);
   for (let a = -0.8; a <= 0.8; a += 0.15) {
     stampDisc(crescent, 8 + Math.cos(a) * 5, 6 + Math.sin(a) * 4, 1.3, "#e4c6ff");
@@ -1054,8 +1206,10 @@ export function createArt(scene: Phaser.Scene): void {
   ([1, 2, 3] as const).forEach((stage) => {
     const look = STAGE_LOOK[stage];
     addCanvas(scene, `sky-${stage}`, makeSky(look));
+    addCanvas(scene, `cloud-${stage}`, makeCloud(look));
     addCanvas(scene, `far-${stage}`, makeFar(look));
     addCanvas(scene, `mid-${stage}`, makeMid(stage, look));
+    addCanvas(scene, `near-${stage}`, makeNear(stage, look));
     const ground = makeGround(look);
     addCanvas(scene, `ground-top-${stage}`, ground.top);
     addCanvas(scene, `ground-fill-${stage}`, ground.fill);
