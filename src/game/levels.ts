@@ -57,8 +57,7 @@ function placePack(solids: Solid[], x: number, w: number, stage: number, rng: Rn
   const pack = [...rng.pick(POOLS[stage])];
   if (extra && rng.chance(0.55)) pack.push(stage === 1 ? "grunt" : rng.pick(["grunt", "archer"] as const));
   return pack.map((kind, index) => {
-    const px =
-      pack.length === 1 ? x + w * 0.58 : x + w * (0.3 + (0.5 * index) / (pack.length - 1));
+    const px = pack.length === 1 ? x + w * 0.62 : x + w * (0.48 + (0.38 * index) / (pack.length - 1));
     return { kind, x: px, y: surfaceAt(solids, px), delay: index * 0.16 };
   });
 }
@@ -139,7 +138,7 @@ export function buildLevel(stage: 1 | 2 | 3, seed: number): LevelData {
     const built = segment(kind, cursor, stage, rng);
     solids.push(...built.solids);
     decors.push(...built.decors);
-    if (built.spawns.length > 0) triggers.push({ x: cursor + Math.min(460, built.w * 0.42), spawns: built.spawns });
+    if (built.spawns.length > 0) triggers.push({ x: cursor + 80, spawns: built.spawns });
     cursor += built.w;
   }
   solids.push({ x: cursor, w: 220, top: GROUND_Y });
