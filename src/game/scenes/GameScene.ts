@@ -79,6 +79,7 @@ export class GameScene extends Phaser.Scene implements WorldApi {
   private comboT = 0;
   private mods = defaultMods();
   private debugOn = false;
+  private debugDom: HTMLDivElement | null = null;
 
   constructor() {
     super("game");
@@ -506,7 +507,22 @@ export class GameScene extends Phaser.Scene implements WorldApi {
       this.vignette.fillStyle(0x6e1020, alpha);
       this.vignette.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
     }
-    if (this.debugOn) this.drawDebug();
+    if (this.debugOn) {
+      this.drawDebug();
+      this.writeDebug();
+    }
+  }
+
+  private writeDebug(): void {
+    if (!this.debugDom) {
+      const el = document.createElement("div");
+      el.style.cssText = "position:fixed;left:8px;top:8px;z-index:80;color:#fff;background:#000a;font:16px monospace;padding:6px;pointer-events:none";
+      document.body.appendChild(el);
+      this.debugDom = el;
+    }
+    const foe = this.enemies.find((enemy) => enemy.active && !enemy.dead);
+    const gap = foe ? Math.round(foe.x - this.player.x) : 0;
+    this.debugDom.textContent = `hp ${Math.round(this.player.hp)} ${this.player.action} face ${this.player.facing} foe ${foe ? `${foe.kind} ${Math.round(foe.hp)} gap ${gap}` : "-"} keys ${this.inputState.left ? "L" : ""}${this.inputState.right ? "R" : ""} buf ${this.inputState.buffer ?? "-"}`;
   }
 
   private drawDebug(): void {
@@ -591,6 +607,8 @@ export class GameScene extends Phaser.Scene implements WorldApi {
   private leave(target: string, data?: object): void {
     if (this.leaving) return;
     this.leaving = true;
+    this.debugDom?.remove();
+    this.debugDom = null;
     this.run.hp = Math.max(0, this.player.hp);
     this.physics.world.pause();
     this.cameras.main.fadeOut(180, 7, 6, 12);

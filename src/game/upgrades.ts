@@ -222,7 +222,7 @@ export function enemyStats(kind: EnemyKind, stage: number): EnemyStats {
   const t = 1 + (stage - 1) * 0.12;
   switch (kind) {
     case "grunt":
-      return { hp: Math.round(38 * t), dmg: Math.round(10 * (1 + (stage - 1) * 0.08)), speed: 88 + stage * 6, gold: 6, name: "步卒" };
+      return { hp: Math.round(38 * t), dmg: Math.round(8 * (1 + (stage - 1) * 0.08)), speed: 88 + stage * 6, gold: 6, name: "步卒" };
     case "archer":
       return { hp: Math.round(30 * t), dmg: Math.round(8 * (1 + (stage - 1) * 0.08)), speed: 72, gold: 8, name: "弓手" };
     case "brute":
