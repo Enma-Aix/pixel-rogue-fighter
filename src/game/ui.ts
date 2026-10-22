@@ -1,0 +1,100 @@
+import Phaser from "phaser";
+
+export const FONT = '"ZCOOL KuaiLe", "PingFang SC", "Microsoft YaHei", sans-serif';
+
+export function label(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  content: string,
+  size: number,
+  color = "#f4ecd8",
+  align: "left" | "center" | "right" = "center",
+): Phaser.GameObjects.Text {
+  const originX = align === "left" ? 0 : align === "right" ? 1 : 0.5;
+  return scene.add
+    .text(x, y, content, {
+      fontFamily: FONT,
+      fontSize: `${size}px`,
+      color,
+      align,
+    })
+    .setOrigin(originX, 0.5);
+}
+
+export class GameButton {
+  readonly node: Phaser.GameObjects.Container;
+  private readonly gfx: Phaser.GameObjects.Graphics;
+  private readonly caption: Phaser.GameObjects.Text;
+  private selected = false;
+  enabled = true;
+
+  constructor(
+    scene: Phaser.Scene,
+    public x: number,
+    public y: number,
+    public w: number,
+    public h: number,
+    text: string,
+    private readonly onPress: () => void,
+    private readonly onHover?: () => void,
+  ) {
+    this.gfx = scene.add.graphics();
+    this.caption = scene.add
+      .text(0, 0, text, {
+        fontFamily: FONT,
+        fontSize: "26px",
+        color: "#f6edd8",
+      })
+      .setOrigin(0.5);
+    const zone = scene.add.zone(0, 0, w, h).setInteractive({ useHandCursor: true });
+    zone.on("pointerover", () => this.onHover?.());
+    zone.on("pointerdown", () => this.press());
+    this.node = scene.add.container(x, y, [this.gfx, this.caption, zone]);
+    this.draw();
+  }
+
+  setText(text: string): void {
+    this.caption.setText(text);
+  }
+
+  setSelected(on: boolean): void {
+    this.selected = on;
+    this.draw();
+  }
+
+  setEnabled(on: boolean): void {
+    this.enabled = on;
+    this.draw();
+  }
+
+  press(): void {
+    if (!this.enabled) return;
+    this.onPress();
+  }
+
+  private draw(): void {
+    const g = this.gfx;
+    g.clear();
+    const fill = !this.enabled ? 0x2a2430 : this.selected ? 0x6a4a28 : 0x241c28;
+    const stroke = !this.enabled ? 0x5c5348 : 0xe2c27a;
+    g.fillStyle(fill, 0.94);
+    g.fillRoundedRect(-this.w / 2, -this.h / 2, this.w, this.h, 8);
+    g.lineStyle(2, stroke, 1);
+    g.strokeRoundedRect(-this.w / 2, -this.h / 2, this.w, this.h, 8);
+    this.caption.setColor(this.enabled ? "#f6edd8" : "#8d8478");
+  }
+}
+
+export function panel(scene: Phaser.Scene, x: number, y: number, w: number, h: number): Phaser.GameObjects.Graphics {
+  const g = scene.add.graphics();
+  g.fillStyle(0x120e16, 0.92);
+  g.fillRoundedRect(x, y, w, h, 10);
+  g.lineStyle(2, 0xe2c27a, 1);
+  g.strokeRoundedRect(x, y, w, h, 10);
+  return g;
+}
+
+export function justDown(key?: Phaser.Input.Keyboard.Key): boolean {
+  return !!key && Phaser.Input.Keyboard.JustDown(key);
+}
