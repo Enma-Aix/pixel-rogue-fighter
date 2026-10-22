@@ -80,24 +80,24 @@ export function spawnDust(scene: Phaser.Scene, x: number, y: number): void {
 }
 
 export function spawnSpark(scene: Phaser.Scene, x: number, y: number, color: number, count = 6): void {
-  const ring = scene.add.circle(x, y, 6, color, 0.55).setDepth(25);
+  const ring = scene.add.circle(x, y, 8, color, 0.7).setDepth(25);
   scene.tweens.add({
     targets: ring,
-    scale: 2.4,
+    scale: 2.8,
     alpha: 0,
-    duration: 140,
+    duration: 160,
     onComplete: () => ring.destroy(),
   });
   for (let i = 0; i < count; i += 1) {
-    const bit = scene.add.image(x, y, "px").setDepth(26).setTint(color).setScale(0.55 + Math.random() * 0.5);
-    const angle = -Math.PI * 0.15 + (i / count) * Math.PI * 1.3 - 0.4;
-    const dist = 18 + Math.random() * 28;
+    const bit = scene.add.image(x, y, "px").setDepth(26).setTint(color).setScale(1.15 + Math.random() * 0.85);
+    const angle = (i / count) * Math.PI * 2 + Math.random() * 0.4;
+    const dist = 22 + Math.random() * 34;
     scene.tweens.add({
       targets: bit,
       x: x + Math.cos(angle) * dist,
-      y: y - Math.abs(Math.sin(angle)) * dist * 0.8 - 6,
+      y: y + Math.sin(angle) * dist * 0.72 - 8,
       alpha: 0,
-      duration: 160 + Math.random() * 120,
+      duration: 180 + Math.random() * 140,
       ease: "Quad.easeOut",
       onComplete: () => bit.destroy(),
     });
