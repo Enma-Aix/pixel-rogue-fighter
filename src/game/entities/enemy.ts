@@ -671,7 +671,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     const fast = phase2 ? 0.84 : 1;
     const d = this.dmg + (phase2 ? 2 : 0);
     const approach: Step[] = dist > 200 ? [{ op: "hold", dur: 0.26, visual: "run", chase: true }] : [];
-    const punish = (dur: number): Step => ({ op: "hold", dur: dur * fast, visual: "idle" });
+    const punish = (dur: number): Step => ({ op: "hold", dur: Math.max(0.78, dur) * fast, visual: "idle" });
     const melee = (extra: boolean): Step[] => [
       { op: "wind", dur: 0.5 * fast, visual: "slash" },
       { op: "hit", dur: 0.14, visual: "slash", vx: 70, spec: { damage: d + 1, kb: 170, stun: 0.22, w: 90, h: 58, ox: 74, oy: -76 } },
@@ -691,14 +691,14 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       const bag = ["掷灯", "扑击", "鬼火"];
       if (dist > 220) bag.push("掷灯", "鬼火");
       if (dist < 140) bag.push("扑击");
-      if (phase2) bag.push("双灯");
+      if (phase2) bag.push("双灯", "双灯", "双灯");
       name = bag[Math.floor(Math.random() * bag.length)];
       if (name === "扑击") {
         steps = [
           ...approach,
-          { op: "wind", dur: 0.58 * fast, visual: "dash" },
-          { op: "hit", dur: 0.26, visual: "dash", vx: 340, spec: { damage: d + 2, kb: 220, stun: 0.26, w: 78, h: 52, ox: 58, oy: -64 } },
-          punish(0.64),
+          { op: "wind", dur: 0.62 * fast, visual: "dash" },
+          { op: "hit", dur: 0.22, visual: "dash", vx: 300, spec: { damage: d + 2, kb: 180, stun: 0.22, w: 70, h: 48, ox: 52, oy: -62 } },
+          punish(0.7),
         ];
       } else if (name === "鬼火") {
         steps = [
@@ -725,7 +725,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       const bag = ["影刺", "连镖", "旋斩"];
       if (dist > 200) bag.push("连镖", "影刺");
       if (dist < 120) bag.push("旋斩");
-      if (phase2) bag.push("瞬步");
+      if (phase2) bag.push("瞬步", "瞬步", "瞬步");
       name = bag[Math.floor(Math.random() * bag.length)];
       if (name === "影刺") {
         steps = [
@@ -759,7 +759,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       const bag = ["横斩", "突进", "弧月"];
       if (dist > 220) bag.push("弧月", "突进");
       if (dist < 140) bag.push("横斩");
-      if (phase2) bag.push("震地", "连斩");
+      if (phase2) bag.push("震地", "震地", "连斩", "连斩");
       name = bag[Math.floor(Math.random() * bag.length)];
       if (name === "突进") {
         steps = [

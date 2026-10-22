@@ -121,44 +121,29 @@ function arena(): Built {
 
 function lanternYard(): Built {
   const w = 980;
-  const solids: Solid[] = [{ x: 0, w, top: GROUND_Y }];
-  return {
-    w,
-    solids,
-    hazards: [
-      { x: 28, w: 64, y: GROUND_Y, kind: "spike" },
-      { x: w - 110, w: 64, y: GROUND_Y, kind: "spike" },
-    ],
-  };
+  return { w, solids: [{ x: 0, w, top: GROUND_Y }], hazards: [] };
 }
 
 function bambooCourt(): Built {
   const w = 1020;
   const solids: Solid[] = [
-    { x: 0, w: 300, top: GROUND_Y },
-    { x: 300, w: 140, top: GROUND_Y - 40 },
-    { x: 440, w: 240, top: GROUND_Y },
-    { x: 680, w: 130, top: GROUND_Y - 36 },
-    { x: 810, w: 210, top: GROUND_Y },
+    { x: 0, w: 280, top: GROUND_Y },
+    { x: 320, w: 120, top: GROUND_Y - 36 },
+    { x: 480, w: 220, top: GROUND_Y },
+    { x: 740, w: 110, top: GROUND_Y - 32 },
+    { x: 880, w: 140, top: GROUND_Y },
   ];
-  return { w, solids, hazards: [{ x: 36, w: 56, y: GROUND_Y, kind: "flame" }] };
+  return { w, solids, hazards: [] };
 }
 
 function ruinArena(): Built {
   const w = 1120;
   const solids: Solid[] = [
     { x: 0, w, top: GROUND_Y },
-    { x: 170, w: 78, top: GROUND_Y - 56 },
-    { x: 880, w: 78, top: GROUND_Y - 56 },
+    { x: 180, w: 70, top: GROUND_Y - 48 },
+    { x: 860, w: 70, top: GROUND_Y - 48 },
   ];
-  return {
-    w,
-    solids,
-    hazards: [
-      { x: 24, w: 60, y: GROUND_Y, kind: "flame" },
-      { x: w - 100, w: 60, y: GROUND_Y, kind: "spike" },
-    ],
-  };
+  return { w, solids, hazards: [] };
 }
 
 function bossArena(stage: 1 | 2 | 3): Built {

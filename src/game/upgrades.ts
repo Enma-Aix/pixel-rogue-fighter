@@ -403,11 +403,11 @@ export function enemyStats(kind: EnemyKind, stage: number): EnemyStats {
     case "leaper":
       return { hp: Math.round(24 * t), dmg: Math.round(9 * d), speed: 142, gold: 6, name: "影刺" };
     case "wisp":
-      return { hp: 220, dmg: 11, speed: 62, gold: 14, name: "灯魂" };
+      return { hp: 168, dmg: 10, speed: 62, gold: 14, name: "灯魂" };
     case "shade":
-      return { hp: 270, dmg: 12, speed: 88, gold: 20, name: "竹客" };
+      return { hp: 210, dmg: 11, speed: 88, gold: 20, name: "竹客" };
     case "boss":
-      return { hp: 330, dmg: 13, speed: 70, gold: 28, name: "残将" };
+      return { hp: 250, dmg: 12, speed: 70, gold: 28, name: "残将" };
     default: {
       const never: never = kind;
       return never;
