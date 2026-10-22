@@ -179,6 +179,11 @@ export class GameScene extends Phaser.Scene implements WorldApi {
     this.touch = new TouchControls(this, (name) => {
       if (!this.paused && !this.leaving) this.setBuffer(name);
     });
+    this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      if (this.paused || this.leaving || !this.player || this.player.dead || pointer.y > 400) return;
+      this.player.facing = pointer.worldX >= this.player.x ? 1 : -1;
+      this.setBuffer("light");
+    });
     this.buildPause();
 
     this.cursors = this.input.keyboard!.createCursorKeys();
