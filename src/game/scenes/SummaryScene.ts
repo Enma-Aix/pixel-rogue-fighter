@@ -107,7 +107,7 @@ export class SummaryScene extends Phaser.Scene {
     audio.play("ui");
     beginRun();
     this.cameras.main.fadeOut(160, 7, 6, 12);
-    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start("game"));
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start("map"));
   }
 
   private shop(): void {

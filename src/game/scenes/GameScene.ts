@@ -10,25 +10,11 @@ import { buildRoom } from "../levels";
 import { publish } from "../live";
 import { currentNode, getRun, noteClear, type RunState } from "../run";
 import { defaultMods, modsFrom, synergyLine, UPGRADES } from "../upgrades";
-import { toggleTouch, touchOn, TouchControls } from "../touch";
+import { bindCombatKeys, gatherCombat, keyLabel, type CombatKeys } from "../keys";
+import { loadSave, screenShakeEnabled } from "../storage";
+import { toggleTouch, touchPrefLabel, TouchControls } from "../touch";
 import type { BufferName, EndMode, InputState, LevelData, ShotSpec, Solid, SpawnDef, WorldApi } from "../types";
 import { FONT, justDown, paintPanel } from "../ui";
-
-interface Keys {
-  up: Phaser.Input.Keyboard.Key;
-  down: Phaser.Input.Keyboard.Key;
-  left: Phaser.Input.Keyboard.Key;
-  right: Phaser.Input.Keyboard.Key;
-  jump: Phaser.Input.Keyboard.Key;
-  light: Phaser.Input.Keyboard.Key;
-  heavy: Phaser.Input.Keyboard.Key;
-  dodge: Phaser.Input.Keyboard.Key;
-  special: Phaser.Input.Keyboard.Key;
-  esc: Phaser.Input.Keyboard.Key;
-  shift: Phaser.Input.Keyboard.Key;
-  enter: Phaser.Input.Keyboard.Key;
-  mute: Phaser.Input.Keyboard.Key;
-}
 
 interface Trigger {
   x: number;
@@ -52,7 +38,8 @@ export class GameScene extends Phaser.Scene implements WorldApi {
   private shots: LiveShot[] = [];
   private triggers: Trigger[] = [];
   private solidsGroup!: Phaser.Physics.Arcade.StaticGroup;
-  private keys!: Keys;
+  private keys!: CombatKeys;
+  private keyNames = loadSave().keys;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private inputState: InputState = { left: false, right: false, jumpHeld: false, buffer: null, bufferT: 0 };
   private touch!: TouchControls;
@@ -213,22 +200,8 @@ export class GameScene extends Phaser.Scene implements WorldApi {
     this.buildPause();
 
     this.cursors = this.input.keyboard!.createCursorKeys();
-    this.keys = this.input.keyboard!.addKeys({
-      up: Phaser.Input.Keyboard.KeyCodes.W,
-      down: Phaser.Input.Keyboard.KeyCodes.S,
-      left: Phaser.Input.Keyboard.KeyCodes.A,
-      right: Phaser.Input.Keyboard.KeyCodes.D,
-      jump: Phaser.Input.Keyboard.KeyCodes.SPACE,
-      light: Phaser.Input.Keyboard.KeyCodes.J,
-      heavy: Phaser.Input.Keyboard.KeyCodes.K,
-      dodge: Phaser.Input.Keyboard.KeyCodes.L,
-      special: Phaser.Input.Keyboard.KeyCodes.U,
-      esc: Phaser.Input.Keyboard.KeyCodes.ESC,
-      shift: Phaser.Input.Keyboard.KeyCodes.SHIFT,
-      enter: Phaser.Input.Keyboard.KeyCodes.ENTER,
-      mute: Phaser.Input.Keyboard.KeyCodes.M,
-    }) as Keys;
-    this.input.keyboard?.addCapture(["SPACE", "UP", "DOWN", "LEFT", "RIGHT"]);
+    this.keyNames = loadSave().keys;
+    this.keys = bindCombatKeys(this, this.keyNames);
 
     this.add
       .text(GAME_WIDTH / 2, 150, `${look.label}  ${look.name}`, {
@@ -401,6 +374,7 @@ export class GameScene extends Phaser.Scene implements WorldApi {
   }
 
   shake(ms: number, intensity: number): void {
+    if (!screenShakeEnabled()) return;
     this.cameras.main.shake(ms, intensity);
   }
 
@@ -440,19 +414,7 @@ export class GameScene extends Phaser.Scene implements WorldApi {
   }
 
   private gather(dt: number): void {
-    const keys = this.keys;
-    this.inputState.left = keys.left.isDown || this.cursors.left.isDown || this.touch.left;
-    this.inputState.right = keys.right.isDown || this.cursors.right.isDown || this.touch.right;
-    this.inputState.jumpHeld = keys.up.isDown || keys.jump.isDown || this.cursors.up.isDown || this.touch.jump;
-    if (justDown(keys.jump) || justDown(keys.up) || justDown(this.cursors.up)) this.setBuffer("jump");
-    if (justDown(keys.light)) this.setBuffer("light");
-    if (justDown(keys.heavy)) this.setBuffer("heavy");
-    if (justDown(keys.dodge) || justDown(keys.shift)) this.setBuffer("dodge");
-    if (justDown(keys.special)) this.setBuffer("special");
-    if (this.inputState.buffer) {
-      this.inputState.bufferT -= dt;
-      if (this.inputState.bufferT <= 0) this.inputState.buffer = null;
-    }
+    gatherCombat(this.keys, this.cursors, this.touch, this.inputState, dt);
   }
 
   private setBuffer(name: BufferName): void {
@@ -745,7 +707,10 @@ export class GameScene extends Phaser.Scene implements WorldApi {
     if (boss?.card) objective = `击败${boss.card.name}`;
     else if (this.portalReady) objective = "前往出口";
     const hintWindow = 5.4;
-    const hint = this.run.stage === 1 && this.elapsed < hintWindow ? "轻 J · 重 K · 闪 L · 奥 U" : "";
+    const hint =
+      this.run.stage === 1 && this.elapsed < hintWindow
+        ? `轻 ${keyLabel(this.keyNames.light)} · 重 ${keyLabel(this.keyNames.heavy)} · 闪 ${keyLabel(this.keyNames.dodge)} · 奥 ${keyLabel(this.keyNames.special)}`
+        : "";
     const hintAlpha = this.elapsed < 2.4 ? 0.9 : Math.max(0, 0.9 * (1 - (this.elapsed - 2.4) / (hintWindow - 2.4)));
     return {
       hp: this.player.hp,
@@ -804,7 +769,7 @@ export class GameScene extends Phaser.Scene implements WorldApi {
   private handlePause(): void {
     if (justDown(this.keys.up) || justDown(this.cursors.up)) this.pauseIndex = (this.pauseIndex + 2) % 3;
     if (justDown(this.keys.down) || justDown(this.cursors.down)) this.pauseIndex = (this.pauseIndex + 1) % 3;
-    this.pauseItems[1].setText(`触屏按键：${touchOn() ? "开" : "关"}`);
+    this.pauseItems[1].setText(`触屏按键：${touchPrefLabel()}`);
     this.pauseItems.forEach((text, index) => text.setColor(index === this.pauseIndex ? "#ffe08a" : "#f6edd8"));
     if (justDown(this.keys.enter) || justDown(this.keys.light)) this.confirmPause();
   }
@@ -816,8 +781,8 @@ export class GameScene extends Phaser.Scene implements WorldApi {
   }
 
   private cycleVolume(): void {
-    audio.cycleVolume();
-    this.volumeLabel.setText(`音量 ${audio.volumeName()}`);
+    audio.cycleSfx();
+    this.volumeLabel.setText(`音效 ${audio.sfxName()}`);
     this.volumeLabel.setAlpha(1);
     this.tweens.killTweensOf(this.volumeLabel);
     this.tweens.add({ targets: this.volumeLabel, alpha: 0, delay: 700, duration: 420 });

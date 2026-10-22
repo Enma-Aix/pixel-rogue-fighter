@@ -82,6 +82,9 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private grace = 0;
   readonly elite: EliteMod | undefined;
   readonly minion: boolean;
+  readonly training: boolean;
+  hits = 0;
+  lastTag: "light" | "heavy" | "special" = "light";
   gold: number;
   private armor = 1;
   private liveSpec: SwingSpec | null = null;
@@ -98,6 +101,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     private world: WorldApi,
     elite?: EliteMod,
     minion = false,
+    training = false,
   ) {
     super(scene, x, y, `ch-${kind}`, 0);
     this.kind = kind;
@@ -139,6 +143,12 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     if (kind === "shield") this.guard = 3;
     this.poise = isBossKind(kind);
     this.awake = isBossKind(kind) ? 1.55 : 0.28;
+    this.training = training;
+    if (training) {
+      this.name = "木人";
+      this.gold = 0;
+      this.awake = 0;
+    }
     scene.add.existing(this);
     scene.physics.add.existing(this);
     this.setOrigin(0.5, ART.footSrc / ART.texH);
@@ -202,6 +212,11 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     }
     const dmg = Math.max(1, Math.round(amount * this.armor));
     this.hp -= dmg;
+    if (this.training) {
+      this.hits += 1;
+      this.lastTag = tag === "heavy" || tag === "special" ? tag : "light";
+      if (this.hp < 1) this.hp = this.maxHp;
+    }
     this.world.float(this.x, this.y - this.markH, crit ? `${dmg}!` : `${dmg}`, crit ? "#ffe08a" : "#fff6ea");
     this.world.spark(this.x + dir * 8, this.y - 58, crit ? 0xffe08a : 0xff8a32, crit ? 12 : 8);
     this.world.sfx(crit ? "slam" : "hit");
@@ -262,6 +277,10 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     if (this.dead || this.hp <= 0 || amount <= 0) return;
     this.hp -= amount;
     this.world.float(this.x, this.y - this.markH, `${Math.round(amount)}`, color);
+    if (this.training) {
+      if (this.hp < 1) this.hp = this.maxHp;
+      return;
+    }
     if (this.hp <= 0) this.receive(1, 40, 0.1, 1, false);
   }
 
@@ -275,7 +294,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     if (this.grace > 0) this.grace -= dt;
     this.paint();
     this.tickDots(dt);
-    if (this.y > 690 && !this.dead) {
+    if (this.y > 690 && !this.dead && !this.training) {
       this.receive(9999, 0, 0, this.facing, false, "heavy");
     }
     if (this.dead) {
@@ -314,6 +333,16 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       this.visual = "hit";
       this.visualT = 0;
       this.swing = null;
+      this.pose();
+      return;
+    }
+    if (this.training) {
+      this.swing = null;
+      this.mode = "move";
+      this.visual = "idle";
+      this.facing = Math.sign(this.world.focus.x - this.x) || this.facing;
+      this.setVelocityX(0);
+      stickToSurface(this, this.world.solids);
       this.pose();
       return;
     }

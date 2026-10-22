@@ -53,8 +53,10 @@ class AudioBus {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private musicGain: GainNode | null = null;
+  private sfxGain: GainNode | null = null;
   private noise: AudioBuffer | null = null;
-  private volume = 2;
+  private musicLevel = 2;
+  private sfxLevel = 2;
   private musicStage = -1;
   private musicStep = 0;
   private nextNote = 0;
@@ -62,7 +64,8 @@ class AudioBus {
 
   constructor() {
     const save = loadSave();
-    this.volume = save.volume;
+    this.musicLevel = save.music;
+    this.sfxLevel = save.sfx;
   }
 
   unlock(): void {
@@ -70,11 +73,13 @@ class AudioBus {
       const Ctx = window.AudioContext;
       this.ctx = new Ctx();
       this.master = this.ctx.createGain();
-      this.master.gain.value = VOLUME[this.volume] ?? 0.2;
+      this.master.gain.value = 1;
       this.master.connect(this.ctx.destination);
       this.musicGain = this.ctx.createGain();
-      this.musicGain.gain.value = 0.45;
       this.musicGain.connect(this.master);
+      this.sfxGain = this.ctx.createGain();
+      this.sfxGain.connect(this.master);
+      this.applyGains();
       const count = Math.floor(this.ctx.sampleRate * 0.4);
       const buffer = this.ctx.createBuffer(1, count, this.ctx.sampleRate);
       const data = buffer.getChannelData(0);
@@ -84,24 +89,46 @@ class AudioBus {
     if (this.ctx.state === "suspended") void this.ctx.resume();
   }
 
-  volumeName(): string {
-    return VOLUME_NAME[this.volume] ?? "中";
+  musicName(): string {
+    return VOLUME_NAME[this.musicLevel] ?? "中";
   }
 
-  cycleVolume(): number {
+  sfxName(): string {
+    return VOLUME_NAME[this.sfxLevel] ?? "中";
+  }
+
+  setMusic(level: number, silent = false): void {
     this.unlock();
     const save = loadSave();
-    save.volume = (save.volume + 1) % 4;
-    save.mute = save.volume === 0;
+    save.music = Math.max(0, Math.min(3, Math.floor(level)));
     writeSave(save);
-    this.apply(save.volume);
-    if (save.volume > 0) this.play("ui");
-    return save.volume;
+    this.musicLevel = save.music;
+    this.applyGains();
+    if (!silent && this.sfxLevel > 0) this.play("ui");
   }
 
-  private apply(level: number): void {
-    this.volume = level;
-    if (this.master) this.master.gain.value = VOLUME[level] ?? 0;
+  setSfx(level: number, silent = false): void {
+    this.unlock();
+    const next = Math.max(0, Math.min(3, Math.floor(level)));
+    const save = loadSave();
+    save.sfx = next;
+    save.volume = next;
+    save.mute = next === 0;
+    writeSave(save);
+    this.sfxLevel = next;
+    this.applyGains();
+    if (!silent && next > 0) this.play("ui");
+  }
+
+  cycleSfx(): number {
+    const save = loadSave();
+    this.setSfx((save.sfx + 1) % 4);
+    return this.sfxLevel;
+  }
+
+  private applyGains(): void {
+    if (this.musicGain) this.musicGain.gain.value = 0.45 * (VOLUME[this.musicLevel] ?? 0);
+    if (this.sfxGain) this.sfxGain.gain.value = VOLUME[this.sfxLevel] ?? 0;
   }
 
   startMusic(stage: 0 | 1 | 2 | 3): void {
@@ -124,7 +151,7 @@ class AudioBus {
   }
 
   private pump(): void {
-    if (!this.ctx || this.musicStage < 0) return;
+    if (!this.ctx || this.musicStage < 0 || this.musicLevel <= 0) return;
     const track = TRACKS[this.musicStage];
     if (!track) return;
     const step = 60 / track.bpm / 2;
@@ -154,7 +181,7 @@ class AudioBus {
 
   play(kind: Sfx): void {
     this.unlock();
-    if (!this.ctx || !this.master || this.volume === 0) return;
+    if (!this.ctx || !this.sfxGain || this.sfxLevel === 0) return;
     switch (kind) {
       case "swing":
         this.burst(0.05, 0.07, 900);
@@ -222,7 +249,7 @@ class AudioBus {
   }
 
   private tone(freq: number, dur: number, type: OscillatorType, gain: number, slide: number): void {
-    if (!this.ctx || !this.master) return;
+    if (!this.ctx || !this.sfxGain) return;
     const now = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
     const amp = this.ctx.createGain();
@@ -232,13 +259,13 @@ class AudioBus {
     amp.gain.setValueAtTime(gain, now);
     amp.gain.exponentialRampToValueAtTime(0.001, now + dur);
     osc.connect(amp);
-    amp.connect(this.master);
+    amp.connect(this.sfxGain);
     osc.start(now);
     osc.stop(now + dur + 0.02);
   }
 
   private burst(dur: number, gain: number, cutoff: number): void {
-    if (!this.ctx || !this.master || !this.noise) return;
+    if (!this.ctx || !this.sfxGain || !this.noise) return;
     const now = this.ctx.currentTime;
     const src = this.ctx.createBufferSource();
     src.buffer = this.noise;
@@ -251,7 +278,7 @@ class AudioBus {
     amp.gain.exponentialRampToValueAtTime(0.001, now + dur);
     src.connect(filter);
     filter.connect(amp);
-    amp.connect(this.master);
+    amp.connect(this.sfxGain);
     src.start(now);
     src.stop(now + dur);
   }

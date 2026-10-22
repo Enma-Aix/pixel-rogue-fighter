@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { loadSave, setTouchPref, touchForced, type TouchPref } from "./storage";
 import type { BufferName } from "./types";
 import { FONT } from "./ui";
 
@@ -14,16 +15,31 @@ const LAYOUT: { id: Hold | BufferName; label: string; x: number; y: number }[] =
   { id: "special", label: "奥", x: 902, y: 436 },
 ];
 
-let touchForce: boolean | null = null;
-
 export function touchOn(): boolean {
-  if (touchForce !== null) return touchForce;
+  const forced = touchForced();
+  if (forced !== null) return forced;
   return window.matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 0;
 }
 
 export function toggleTouch(): boolean {
-  touchForce = !touchOn();
-  return touchForce;
+  const next = !touchOn();
+  setTouchPref(next ? "on" : "off");
+  return next;
+}
+
+export function cycleTouchPref(): TouchPref {
+  const order: TouchPref[] = ["auto", "on", "off"];
+  const current = loadSave().touch;
+  const next = order[(order.indexOf(current) + 1) % order.length] ?? "auto";
+  setTouchPref(next);
+  return next;
+}
+
+export function touchPrefLabel(): string {
+  const pref = loadSave().touch;
+  if (pref === "on") return "开";
+  if (pref === "off") return "关";
+  return touchOn() ? "自动 · 开" : "自动 · 关";
 }
 
 export class TouchControls {
