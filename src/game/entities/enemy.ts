@@ -132,7 +132,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     const dmg = Math.max(1, Math.round(amount));
     this.hp -= dmg;
     this.world.float(this.x, this.y - this.markH, crit ? `${dmg}!` : `${dmg}`, crit ? "#ffe08a" : "#fff6ea");
-    this.world.spark(this.x + dir * 8, this.y - 58, crit ? 0xffd56a : 0xfff6ea, crit ? 12 : 7);
+    this.world.spark(this.x + dir * 8, this.y - 58, crit ? 0xffe08a : 0xff8a32, crit ? 12 : 8);
     this.world.sfx(crit ? "slam" : "hit");
     this.flash = crit ? 0.16 : 0.1;
     if (this.hp <= 0) {
@@ -144,7 +144,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       this.setVelocity(dir * 140, -180);
       this.deadT = 0;
       this.world.sfx("ko");
-      this.world.spark(this.x, this.y - 48, 0xffe2c4, this.kind === "boss" ? 18 : 12);
+      this.world.spark(this.x, this.y - 48, 0xffb45a, this.kind === "boss" ? 18 : 12);
       this.world.dust(this.x - 16, this.y);
       this.world.dust(this.x + 16, this.y);
       this.world.shake(this.kind === "boss" ? 220 : 90, this.kind === "boss" ? 0.016 : 0.007);
