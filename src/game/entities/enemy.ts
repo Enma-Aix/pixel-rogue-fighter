@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { loopFrame, playFrame } from "../art";
 import { ART, TUNING } from "../constants";
-import { tryStep } from "../step";
+import { stickToSurface, tryStep } from "../step";
 import { enemyStats } from "../upgrades";
 import type { EnemyKind, Swing, WorldApi } from "../types";
 import { FONT } from "../ui";
@@ -204,6 +204,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     else this.updateGrunt(dt);
     this.maybeHop();
     if (this.mode === "move") tryStep(this, this.facing, this.world.solids);
+    stickToSurface(this, this.world.solids);
     this.pose();
   }
 

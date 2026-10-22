@@ -139,7 +139,7 @@ export function buildLevel(stage: 1 | 2 | 3, seed: number): LevelData {
     const built = segment(kind, cursor, stage, rng);
     solids.push(...built.solids);
     decors.push(...built.decors);
-    if (built.spawns.length > 0) triggers.push({ x: cursor - 40, spawns: built.spawns });
+    if (built.spawns.length > 0) triggers.push({ x: cursor + Math.min(460, built.w * 0.42), spawns: built.spawns });
     cursor += built.w;
   }
   solids.push({ x: cursor, w: 220, top: GROUND_Y });

@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { loopFrame, playFrame } from "../art";
 import { ART, GROUND_Y, TUNING, clamp } from "../constants";
-import { tryStep } from "../step";
+import { stickToSurface, tryStep } from "../step";
 import type { InputState, Mods, Swing, WorldApi } from "../types";
 
 type Action = "idle" | "run" | "jump" | "fall" | "attack" | "dodge" | "special" | "hit" | "dead";
@@ -167,6 +167,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setDepth(10);
     this.hp = hp;
     this.maxHp = maxHp;
+    this.iFrame = 0.9;
     this.mods = mods;
     this.maxCharges = mods.dashCharges;
     this.charges = this.maxCharges;
@@ -254,6 +255,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.wasGround = false;
       return;
     }
+    stickToSurface(this, this.world.solids);
 
     if (this.dead) {
       if (grounded) this.setVelocityX(0);

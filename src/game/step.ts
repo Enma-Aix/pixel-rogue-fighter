@@ -21,3 +21,16 @@ export function tryStep(sprite: Phaser.Physics.Arcade.Sprite, dir: number, solid
   sprite.setVelocityY(0);
   return true;
 }
+
+export function stickToSurface(sprite: Phaser.Physics.Arcade.Sprite, solids: Solid[]): void {
+  const body = sprite.body as Phaser.Physics.Arcade.Body | null;
+  if (!body) return;
+  let top = Infinity;
+  for (const solid of solids) {
+    if (sprite.x < solid.x || sprite.x > solid.x + solid.w) continue;
+    if (solid.top < top) top = solid.top;
+  }
+  if (!Number.isFinite(top) || sprite.y <= top + 28) return;
+  body.reset(sprite.x, top - 2);
+  sprite.setVelocityY(0);
+}

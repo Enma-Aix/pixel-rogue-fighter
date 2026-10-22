@@ -367,7 +367,7 @@ export class GameScene extends Phaser.Scene implements WorldApi {
 
   private fireTriggers(): void {
     for (const trigger of this.triggers) {
-      if (trigger.fired || this.player.x < trigger.x - 420) continue;
+      if (trigger.fired || this.player.x < trigger.x - 120) continue;
       trigger.fired = true;
       for (const spawn of trigger.spawns) {
         this.time.delayedCall(spawn.delay * 1000, () => this.spawn(spawn));
