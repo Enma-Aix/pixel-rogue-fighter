@@ -53,8 +53,8 @@ function decorate(solids: Solid[], x: number, w: number, stage: number, rng: Rng
   return list;
 }
 
-function placePack(solids: Solid[], x: number, w: number, stage: number, rng: Rng, extra = false): SpawnDef[] {
-  const pack = [...rng.pick(POOLS[stage])];
+function placePack(solids: Solid[], x: number, w: number, stage: number, rng: Rng, extra = false, meleeOnly = false): SpawnDef[] {
+  const pack: EnemyKind[] = meleeOnly ? ["grunt", "grunt"] : [...rng.pick(POOLS[stage])];
   if (extra && rng.chance(0.55)) pack.push(stage === 1 ? "grunt" : rng.pick(["grunt", "archer"] as const));
   return pack.map((kind, index) => {
     const px = pack.length === 1 ? x + w * 0.62 : x + w * (0.48 + (0.38 * index) / (pack.length - 1));
@@ -69,7 +69,7 @@ interface Built {
   decors: DecorDef[];
 }
 
-function segment(kind: string, origin: number, stage: number, rng: Rng): Built {
+function segment(kind: string, origin: number, stage: number, rng: Rng, meleeOnly = false): Built {
   if (kind === "mounds") {
     const w = 860;
     const solids: Solid[] = [
@@ -79,7 +79,7 @@ function segment(kind: string, origin: number, stage: number, rng: Rng): Built {
       { x: origin + 520, w: 160, top: GROUND_Y - 64 },
       { x: origin + 680, w: 180, top: GROUND_Y },
     ];
-    return { w, solids, spawns: placePack(solids, origin, w, stage, rng), decors: decorate(solids, origin, w, stage, rng, 0.55) };
+    return { w, solids, spawns: placePack(solids, origin, w, stage, rng, false, meleeOnly), decors: decorate(solids, origin, w, stage, rng, 0.55) };
   }
   if (kind === "trench") {
     const w = 920;
@@ -90,7 +90,7 @@ function segment(kind: string, origin: number, stage: number, rng: Rng): Built {
       { x: origin + lip, w: trenchW, top: GROUND_Y + 58, trench: true },
       { x: origin + lip + trenchW, w: w - lip - trenchW, top: GROUND_Y },
     ];
-    return { w, solids, spawns: placePack(solids, origin, w, stage, rng), decors: decorate(solids, origin, w, stage, rng, 0.4) };
+    return { w, solids, spawns: placePack(solids, origin, w, stage, rng, false, meleeOnly), decors: decorate(solids, origin, w, stage, rng, 0.4) };
   }
   if (kind === "stairs") {
     const w = 900;
@@ -107,7 +107,7 @@ function segment(kind: string, origin: number, stage: number, rng: Rng): Built {
       cursor = step.x + step.w;
     }
     if (cursor < w) solids.push({ x: origin + cursor, w: w - cursor, top: GROUND_Y });
-    return { w, solids, spawns: placePack(solids, origin, w, stage, rng), decors: decorate(solids, origin, w, stage, rng, 0.45) };
+    return { w, solids, spawns: placePack(solids, origin, w, stage, rng, false, meleeOnly), decors: decorate(solids, origin, w, stage, rng, 0.45) };
   }
   if (kind === "arena" || kind === "boss") {
     const w = kind === "boss" ? 1120 : 980;
@@ -115,12 +115,12 @@ function segment(kind: string, origin: number, stage: number, rng: Rng): Built {
     const spawns: SpawnDef[] =
       kind === "boss"
         ? [{ kind: "boss", x: origin + w * 0.68, y: GROUND_Y, delay: 0.35 }]
-        : placePack(solids, origin, w, stage, rng, true);
+        : placePack(solids, origin, w, stage, rng, true, meleeOnly);
     return { w, solids, spawns, decors: decorate(solids, origin, w, stage, rng, kind === "boss" ? 0.28 : 0.35) };
   }
   const w = 780;
   const solids: Solid[] = [{ x: origin, w, top: GROUND_Y }];
-  return { w, solids, spawns: placePack(solids, origin, w, stage, rng), decors: decorate(solids, origin, w, stage, rng, 0.6) };
+  return { w, solids, spawns: placePack(solids, origin, w, stage, rng, false, meleeOnly), decors: decorate(solids, origin, w, stage, rng, 0.6) };
 }
 
 export function buildLevel(stage: 1 | 2 | 3, seed: number): LevelData {
@@ -134,8 +134,10 @@ export function buildLevel(stage: 1 | 2 | 3, seed: number): LevelData {
   const triggers: TriggerDef[] = [];
   const decors: DecorDef[] = decorate(solids, 0, 300, stage, rng, 0.4);
   let cursor = 300;
+  let index = 0;
   for (const kind of kinds) {
-    const built = segment(kind, cursor, stage, rng);
+    const built = segment(kind, cursor, stage, rng, stage === 1 && index === 0);
+    index += 1;
     solids.push(...built.solids);
     decors.push(...built.decors);
     if (built.spawns.length > 0) triggers.push({ x: cursor + 80, spawns: built.spawns });

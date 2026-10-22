@@ -289,7 +289,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       this.timer -= dt;
       if (this.timer <= 0) {
         this.mode = "move";
-        this.cd = 1.35;
+        this.cd = 2.4;
       }
       return;
     }
