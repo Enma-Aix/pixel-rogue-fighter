@@ -135,6 +135,19 @@ describe('combat and rooms', () => {
     expect(before - guard.hp).toBeGreaterThanOrEqual(8);
   });
 
+  it('contact damage leaves room to escape', () => {
+    const run = runOf(9);
+    const guard = makeEnemy(run, 'guard', run.player.x, run.player.y, false);
+    guard.cd = 999;
+    run.enemies.push(guard);
+    const hp = run.player.hp;
+    hold(run, {}, 180);
+    const lost = hp - run.player.hp;
+    expect(lost).toBeGreaterThan(0);
+    expect(lost).toBeLessThan(20);
+    expect(run.player.hp).toBeGreaterThan(70);
+  });
+
   it('parries an active slash without taking the hit', () => {
     const run = runOf(4);
     const guard = makeEnemy(run, 'guard', run.player.x + 22, run.player.y, false);

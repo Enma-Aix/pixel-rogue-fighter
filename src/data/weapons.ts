@@ -63,31 +63,31 @@ const sword: WeaponDef = {
   moves: {
     l1: mv({
       id: 'l1', startup: 4, active: 3, recovery: 12,
-      damage: 8, poise: 8, hitstun: 13, kbX: 1.7, kbY: 0, hitstop: 4, energy: 6,
+      damage: 8, poise: 8, hitstun: 16, kbX: 2.3, kbY: 0, hitstop: 7, energy: 6,
       hitbox: { x: 6, y: -32, w: 32, h: 24 }, lunge: 1.7,
       cancelAt: 6, cancelEnd: 14, cancelTo: ['l2', 'dash', 'parry', 'skill'],
     }),
     l2: mv({
       id: 'l2', startup: 4, active: 3, recovery: 13,
-      damage: 10, poise: 10, hitstun: 14, kbX: 1.9, kbY: -0.4, hitstop: 5, energy: 7,
+      damage: 10, poise: 10, hitstun: 18, kbX: 2.6, kbY: -0.6, hitstop: 8, energy: 7,
       hitbox: { x: 4, y: -36, w: 36, h: 26 }, lunge: 1.5,
       cancelAt: 6, cancelEnd: 15, cancelTo: ['l3', 'dash', 'parry', 'skill'],
     }),
     l3: mv({
       id: 'l3', startup: 6, active: 4, recovery: 18,
-      damage: 16, poise: 16, hitstun: 16, kbX: 1.2, kbY: -4.6, hitstop: 8, energy: 10,
+      damage: 16, poise: 18, hitstun: 20, kbX: 1.6, kbY: -5.1, hitstop: 11, energy: 10,
       hitbox: { x: 2, y: -46, w: 34, h: 36 }, lunge: 1.1, launch: true,
       cancelAt: 10, cancelEnd: 20, cancelTo: ['dash', 'skill'],
     }),
     heavy: mv({
       id: 'heavy', startup: 10, active: 4, recovery: 20,
-      damage: 20, poise: 22, hitstun: 18, kbX: 3.2, kbY: -1.6, hitstop: 8, energy: 8,
+      damage: 20, poise: 24, hitstun: 20, kbX: 4.1, kbY: -1.8, hitstop: 11, energy: 8,
       hitbox: { x: 2, y: -38, w: 42, h: 28 }, lunge: 0.6,
       cancelAt: 16, cancelEnd: 24, cancelTo: ['dash'],
     }),
     heavyFull: mv({
       id: 'heavyFull', startup: 6, active: 5, recovery: 22,
-      damage: 34, poise: 36, hitstun: 24, kbX: 4.2, kbY: -2.4, hitstop: 11, energy: 12,
+      damage: 34, poise: 40, hitstun: 26, kbX: 5.2, kbY: -2.6, hitstop: 14, energy: 12,
       hitbox: { x: 0, y: -42, w: 50, h: 34 }, lunge: 0.4, armor: true, shockwave: 'small',
       cancelAt: 20, cancelEnd: 28, cancelTo: ['dash'],
     }),
@@ -130,7 +130,7 @@ const hammer: WeaponDef = {
   moves: {
     l1: mv({
       id: 'l1', startup: 7, active: 4, recovery: 16,
-      damage: 14, poise: 16, hitstun: 16, kbX: 2.5, kbY: -0.6, hitstop: 6, energy: 7,
+      damage: 14, poise: 18, hitstun: 18, kbX: 3.1, kbY: -0.8, hitstop: 8, energy: 7,
       hitbox: { x: 4, y: -34, w: 36, h: 28 }, lunge: 1.1,
       cancelAt: 10, cancelEnd: 20, cancelTo: ['l2', 'dash', 'parry', 'skill'],
     }),
@@ -197,7 +197,7 @@ const dagger: WeaponDef = {
   moves: {
     l1: mv({
       id: 'l1', startup: 3, active: 2, recovery: 8,
-      damage: 5, poise: 4, hitstun: 10, kbX: 1.1, kbY: 0, hitstop: 3, energy: 4,
+      damage: 5, poise: 4, hitstun: 11, kbX: 1.3, kbY: 0, hitstop: 5, energy: 4,
       hitbox: { x: 8, y: -30, w: 26, h: 18 }, lunge: 2.1,
       cancelAt: 4, cancelEnd: 10, cancelTo: ['l2', 'dash', 'parry', 'skill'],
     }),
@@ -215,7 +215,7 @@ const dagger: WeaponDef = {
     }),
     l4: mv({
       id: 'l4', startup: 4, active: 8, recovery: 14,
-      damage: 5, poise: 4, hitstun: 12, kbX: 0.8, kbY: -3.6, hitstop: 5, energy: 8,
+      damage: 5, poise: 4, hitstun: 14, kbX: 1.1, kbY: -4.2, hitstop: 8, energy: 8,
       hitbox: { x: 4, y: -40, w: 30, h: 32 }, lunge: 1.2, launch: true, multiEvery: 3,
       cancelAt: 12, cancelEnd: 20, cancelTo: ['dash', 'skill'],
     }),

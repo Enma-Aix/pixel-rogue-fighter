@@ -423,7 +423,9 @@ export class RunScene extends Phaser.Scene {
     const img = this.add.image(x, y, key);
     if (facing === -1) img.setFlipX(true);
     this.world.add(img);
-    this.sparks.push({ img, life: 12, max: 12 });
+    const slashy = kind.startsWith('slash') || kind === 'plunge' || kind === 'hit' || kind === 'burst';
+    const life = slashy ? 16 : 12;
+    this.sparks.push({ img, life, max: life });
   }
 
   private present(): void {
@@ -455,7 +457,8 @@ export class RunScene extends Phaser.Scene {
     const flicker = p.invuln > 0 && Math.floor(this.run.time / 2) % 2 === 0;
     this.player.setAlpha(p.state === 'dead' ? 0.7 : p.iFrame ? 0.45 : flicker ? 0.25 : 1);
     this.player.clearTint();
-    if (this.run.hitstop > 0) this.player.setTintFill(0xfff1d2);
+    const flash = this.run.hitstop > 0 || (p.invuln > 26 && p.stun > 0);
+    if (flash) this.player.setTintFill(0xfff1d2);
     this.syncActors();
     this.drawWorldFx();
     this.drawHud();

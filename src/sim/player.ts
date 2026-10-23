@@ -17,7 +17,7 @@ import { t } from '../data/strings';
 import { WEAPONS, getMove, isActiveFrame, moveLength, nextCombo } from '../data/weapons';
 import { hasRelic } from './loot';
 import type { Action, Enemy, Run } from './model';
-import { hurtPlayer, moveHitbox, spawnShockwave } from './combat';
+import { hurtPlayer, moveHitbox, spawnShockwave, swingKind } from './combat';
 import { moveBody, onPlatform } from './collision';
 import { currentRoom } from './world';
 
@@ -132,7 +132,25 @@ function begin(run: Run, id: string): void {
     run.events.push({ t: 'sfx', id: 'skill' });
     const move = getMove(run.weapon, 'skill');
     if (move.special === 'blink') blink(run);
-  } else run.events.push({ t: 'sfx', id: id === 'heavy' || id === 'heavyFull' ? 'swingHeavy' : 'swing' });
+    run.events.push({
+      t: 'fx',
+      kind: swingKind(run.weapon, move),
+      x: p.x + p.facing * 14,
+      y: p.y - 20,
+      facing: p.facing,
+    });
+  } else {
+    const heavy = id === 'heavy' || id === 'heavyFull';
+    run.events.push({ t: 'sfx', id: heavy ? 'swingHeavy' : run.weapon === 'dagger' ? 'swingDagger' : run.weapon === 'hammer' ? 'swingHammer' : 'swing' });
+    const move = getMove(run.weapon, id);
+    run.events.push({
+      t: 'fx',
+      kind: swingKind(run.weapon, move),
+      x: p.x + p.facing * (id === 'plunge' ? 0 : 16),
+      y: p.y - (id === 'plunge' ? 8 : 22),
+      facing: p.facing,
+    });
+  }
 }
 
 function blink(run: Run): void {

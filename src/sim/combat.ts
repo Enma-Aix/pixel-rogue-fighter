@@ -34,13 +34,29 @@ function pushFx(run: Run, kind: string, x: number, y: number, facing?: 1 | -1): 
   run.events.push({ t: 'fx', kind, x, y, facing });
 }
 
+export function swingKind(weapon: string, move: { id: string; plunge?: boolean }): string {
+  if (move.plunge || move.id === 'plunge') return 'plunge';
+  if (move.id === 'l3' || move.id === 'l4' || move.id === 'airHeavy') return weapon === 'dagger' ? 'slashDagger' : 'slashUp';
+  if (move.id === 'heavy' || move.id === 'heavyFull') return weapon === 'dagger' ? 'slashDagger' : weapon === 'hammer' ? 'slashHammer' : 'slashSword';
+  if (weapon === 'hammer') return 'slashHammer';
+  if (weapon === 'dagger') return 'slashDagger';
+  return 'slashSword';
+}
+
+function impactId(weapon: string, move: { id: string; hitstop: number }): string {
+  const heavy = move.hitstop >= 9 || move.id === 'heavy' || move.id === 'heavyFull' || move.id === 'plunge';
+  if (weapon === 'hammer') return heavy ? 'hitHammer' : 'hitHammerLight';
+  if (weapon === 'dagger') return 'hitDagger';
+  return heavy ? 'hitSwordHeavy' : 'hitSword';
+}
+
 export function hurtPlayer(
   run: Run,
   raw: number,
   kbX: number,
   kbY: number,
   src: string,
-  opts?: { pierceArmor?: boolean },
+  opts?: { pierceArmor?: boolean; contact?: boolean },
 ): boolean {
   const p = run.player;
   if (p.state === 'dead') return false;
@@ -48,6 +64,27 @@ export function hurtPlayer(
   let amount = raw * (1 - run.charDr);
   if (hasRelic(run, 'glass')) amount *= 1.2;
   amount = Math.max(1, Math.round(amount));
+  if (opts?.contact) {
+    p.hp -= amount;
+    p.invuln = Math.max(p.invuln, 48);
+    if (!p.action && !p.charging) {
+      p.stun = 8;
+      p.state = 'hurt';
+      p.vx = kbX;
+      p.vy = Math.min(p.vy, -0.8);
+      p.grounded = false;
+    } else {
+      p.vx += kbX * 0.25;
+    }
+    run.lastHit = src;
+    run.hitstop = Math.max(run.hitstop, 3);
+    run.shake = Math.min(4, run.shake + 1.1);
+    run.events.push({ t: 'float', text: String(amount), x: p.x, y: p.y - p.h - 4, color: '#ffb0a0' });
+    run.events.push({ t: 'sfx', id: 'hurt' });
+    pushFx(run, 'hit', p.x, p.y - p.h * 0.55, kbX < 0 ? -1 : 1);
+    if (p.hp <= 0) killOrStand(run, src);
+    return true;
+  }
   if (p.armor && !opts?.pierceArmor) {
     p.hp -= amount;
     p.invuln = Math.max(p.invuln, 8);
@@ -164,7 +201,7 @@ function applyPlayerHit(run: Run, e: Enemy, move: MoveDef, riposte: boolean): vo
     stun += 8;
   }
   e.hp -= dmg;
-  e.flash = 3;
+  e.flash = 8;
   e.hitByPlayer = true;
   e.poise -= poiseDmg;
   e.poiseRecover = 90;
@@ -212,9 +249,10 @@ function applyPlayerHit(run: Run, e: Enemy, move: MoveDef, riposte: boolean): vo
   const hx = (playerHurtbox(p).x + enemyHurtbox(e).x) / 2 + (p.facing === 1 ? 10 : -10);
   const hy = e.y - e.h * 0.65;
   run.events.push({ t: 'float', text: String(dmg), x: e.x, y: e.y - e.h - 6, color: move.launch ? '#ffd29a' : '#fff4e8' });
-  run.events.push({ t: 'slash', x: hx, y: hy, facing: p.facing, kind: move.plunge ? 'plunge' : move.id });
-  run.events.push({ t: 'sfx', id: move.hitstop >= 8 ? 'hitHeavy' : 'hit' });
-  pushFx(run, 'spark', hx, hy, p.facing);
+  run.events.push({ t: 'slash', x: hx, y: hy, facing: p.facing, kind: swingKind(run.weapon, move) });
+  run.events.push({ t: 'sfx', id: impactId(run.weapon, move) });
+  pushFx(run, swingKind(run.weapon, move), hx, hy, p.facing);
+  pushFx(run, move.hitstop >= 9 ? 'burst' : 'hit', hx, hy - 4, p.facing);
   if ((move.id === 'l3' || move.id === 'l4') && hasRelic(run, 'brand') && hasRelic(run, 'openSky')) {
     run.followups.push({ delay: 7, damage: 8, x: e.x, y: e.y - 20, facing: p.facing, w: 36, h: 28 });
     run.events.push({ t: 'float', text: t('bonusSlash'), x: e.x, y: e.y - e.h - 22, color: '#ff9a4a' });
@@ -397,9 +435,9 @@ export function resolveCombat(run: Run): void {
     for (const e of run.enemies) {
       if (!e.alive || e.contact <= 0 || e.contactCd > 0 || e.stun > 0 || e.hitByPlayer) continue;
       if (!overlap(playerHurtbox(p), enemyHurtbox(e))) continue;
-      e.contactCd = 42;
       const dir = p.x < e.x ? -1 : 1;
-      hurtPlayer(run, Math.round(e.contact * e.dmgScale), dir * 2.2, -1.6, e.name);
+      const hit = hurtPlayer(run, Math.round(e.contact * e.dmgScale), dir * 1.35, -0.45, e.name, { contact: true });
+      if (hit) e.contactCd = 64;
     }
   }
 

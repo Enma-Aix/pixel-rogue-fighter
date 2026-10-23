@@ -130,13 +130,39 @@ class AudioBus {
         this.noise(t, 0.06, 0.18, 900);
         this.tone(520, t, 0.05, 'square', 0.05, out);
         break;
+      case 'swingHammer':
+        this.noise(t, 0.08, 0.22, 420);
+        this.tone(140, t, 0.09, 'sawtooth', 0.07, out);
+        break;
+      case 'swingDagger':
+        this.noise(t, 0.04, 0.12, 1600);
+        this.tone(880, t, 0.04, 'square', 0.04, out);
+        break;
       case 'swingHeavy':
         this.noise(t, 0.1, 0.28, 500);
         this.tone(180, t, 0.12, 'sawtooth', 0.08, out);
         break;
       case 'hit':
-        this.tone(240, t, 0.06, 'square', 0.12, out);
-        this.noise(t, 0.04, 0.16, 1400);
+      case 'hitSword':
+        this.tone(240, t, 0.05, 'square', 0.1, out);
+        this.tone(720, t, 0.04, 'square', 0.05, out);
+        this.noise(t, 0.05, 0.16, 1600);
+        break;
+      case 'hitSwordHeavy':
+        this.tone(160, t, 0.1, 'square', 0.14, out);
+        this.tone(90, t + 0.02, 0.12, 'triangle', 0.08, out);
+        this.noise(t, 0.08, 0.22, 900);
+        break;
+      case 'hitHammer':
+      case 'hitHammerLight':
+        this.tone(90, t, 0.12, 'square', 0.16, out);
+        this.tone(48, t, 0.16, 'sine', 0.1, out);
+        this.noise(t, 0.1, 0.24, 400);
+        break;
+      case 'hitDagger':
+        this.tone(980, t, 0.03, 'square', 0.07, out);
+        this.tone(640, t + 0.02, 0.04, 'square', 0.04, out);
+        this.noise(t, 0.03, 0.1, 2200);
         break;
       case 'hitHeavy':
         this.tone(120, t, 0.12, 'square', 0.16, out);
