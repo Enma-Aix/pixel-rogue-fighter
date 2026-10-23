@@ -166,7 +166,7 @@ export class RunScene extends Phaser.Scene {
     this.ui.add(this.mapG);
     this.floorLabel = label(this, 250, 6, ' ');
     this.goldLabel = label(this, 12, 30, ' ');
-    this.weaponLabel = label(this, 12, 252, ' ');
+    this.weaponLabel = label(this, 12, 44, ' ');
     this.promptLabel = label(this, 160, 232, ' ');
     this.comboLabel = label(this, 200, 48, ' ');
     this.tutLabel = label(this, 12, 46, ' ');
@@ -468,10 +468,15 @@ export class RunScene extends Phaser.Scene {
     else this.vignette.clearTint();
     const boss = this.run.enemies.some((e) => e.boss && e.alive);
     audio.setCue(this.run.mode === 'dead' ? 'none' : boss ? 'boss' : biome);
+    const roomW = room.w * TILE;
     for (const mote of this.world.list) {
       if (mote instanceof Phaser.GameObjects.Image && mote.getData('mote')) {
         const base = mote.getData('base') as number;
-        mote.y = base + Math.sin(this.time.now / 500 + mote.x) * 3;
+        const drift = (mote.getData('drift') as number) || 0;
+        mote.y = base + Math.sin(this.time.now / 480 + mote.x * 0.02) * 4;
+        mote.x += drift;
+        if (mote.x < 8) mote.x = roomW - 12;
+        if (mote.x > roomW - 8) mote.x = 12;
       }
     }
   }
@@ -499,12 +504,17 @@ export class RunScene extends Phaser.Scene {
       img.setData('prop', prop.kind);
       this.world.add(img);
     }
-    for (let i = 0; i < 8; i++) {
-      const mx = 30 + ((i * 97 + room.w * 13) % Math.max(40, room.w * TILE - 60));
-      const my = 24 + ((i * 53) % Math.max(30, room.h * TILE - 80));
-      const mote = this.add.image(mx, my, 'glow').setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.25);
+    const moteTint = biome === 'molten' ? 0xff9a3a : biome === 'sanctum' ? 0xb9c6ff : 0xffb07a;
+    for (let i = 0; i < 16; i++) {
+      const mx = 20 + ((i * 97 + room.w * 13) % Math.max(40, room.w * TILE - 40));
+      const my = 18 + ((i * 53) % Math.max(30, room.h * TILE - 70));
+      const mote = this.add.image(mx, my, 'glow').setBlendMode(Phaser.BlendModes.ADD);
+      mote.setTint(moteTint);
+      mote.setScale(0.28 + (i % 4) * 0.16);
+      mote.setAlpha(0.12 + (i % 5) * 0.05);
       mote.setData('mote', true);
       mote.setData('base', my);
+      mote.setData('drift', ((i % 5) - 2) * 0.08);
       this.world.add(mote);
     }
     this.world.bringToTop(this.player);
@@ -562,11 +572,11 @@ export class RunScene extends Phaser.Scene {
         this.shots.delete(id);
       }
     }
-    const frame = Math.floor(this.run.time / 8) % 2;
+    const frame = Math.floor(this.run.time / 10) % 4;
     for (const child of this.world.list) {
       if (child instanceof Phaser.GameObjects.Image && child.getData('prop')) {
         const kind = child.getData('prop') as string;
-        const key = `pr:${kind}:${kind === 'portal' || kind === 'shrine' ? frame : 0}`;
+        const key = `pr:${kind}:${frame}`;
         if (this.textures.exists(key)) child.setTexture(key);
       }
     }

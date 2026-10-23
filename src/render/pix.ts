@@ -9,6 +9,17 @@ export class Pix {
     this.data = new Uint8ClampedArray(w * h * 4);
   }
 
+  erase(x: number, y: number): void {
+    const ix = x | 0;
+    const iy = y | 0;
+    if (ix < 0 || iy < 0 || ix >= this.w || iy >= this.h) return;
+    const i = (iy * this.w + ix) * 4;
+    this.data[i] = 0;
+    this.data[i + 1] = 0;
+    this.data[i + 2] = 0;
+    this.data[i + 3] = 0;
+  }
+
   px(x: number, y: number, color: number, a = 255): void {
     const ix = x | 0;
     const iy = y | 0;
@@ -110,4 +121,35 @@ export function hash2(x: number, y: number): number {
 export function outlined(pix: Pix, x: number, y: number, w: number, h: number, fill: number, line = 0x120c16): void {
   pix.rect(x, y, w, h, line);
   if (w >= 3 && h >= 3) pix.rect(x + 1, y + 1, w - 2, h - 2, fill);
+}
+
+export function blob(pix: Pix, cx: number, cy: number, rx: number, ry: number, color: number, a = 255): void {
+  const rxs = Math.max(1, rx);
+  const rys = Math.max(1, ry);
+  for (let y = -rys; y <= rys; y++) {
+    for (let x = -rxs; x <= rxs; x++) {
+      const nx = x / rxs;
+      const ny = y / rys;
+      if (nx * nx + ny * ny <= 1.02) pix.px(cx + x, cy + y, color, a);
+    }
+  }
+}
+
+/** One-pixel ink around opaque pixels. Drawn shapes stay the colors they were painted. */
+export function inkOutline(pix: Pix, color = 0x100910): void {
+  const w = pix.w;
+  const h = pix.h;
+  const solid = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) solid[i] = pix.data[i * 4 + 3]! > 40 ? 1 : 0;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (solid[y * w + x]) continue;
+      let touch = false;
+      if (x > 0 && solid[y * w + x - 1]) touch = true;
+      else if (x + 1 < w && solid[y * w + x + 1]) touch = true;
+      else if (y > 0 && solid[(y - 1) * w + x]) touch = true;
+      else if (y + 1 < h && solid[(y + 1) * w + x]) touch = true;
+      if (touch) pix.px(x, y, color);
+    }
+  }
 }
