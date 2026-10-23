@@ -294,7 +294,7 @@ function drawHuman(pix: Pix, kind: string, cx: number, feet: number, frame: numb
     kind === 'boss3' ? 0x2a2450 :
     kind === 'sentinel' || kind === 'sentinelElite' ? 0x3a4668 :
     kind === 'boss1' || kind === 'knight' ? 0x4a3048 :
-    kind === 'archer' ? 0x3a4038 : 0x4a3a46;
+    kind === 'archer' ? 0x6d7a62 : 0x6a5468;
   const hi = kind === 'boss3' ? 0x9a8cff : kind === 'phantom' ? 0xc8b6ff : STEEL;
   if (dead) {
     outlined(pix, cx - 10, feet - 8, 22, 7, cloth);

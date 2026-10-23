@@ -138,6 +138,19 @@ function startAttack(run: Run, e: Enemy, def: AttackDef): void {
       max: life,
       kind: 'rect',
     });
+  } else if (def.projectile && (def.projectile.pattern === 'aim' || def.projectile.pattern === 'fan' || def.projectile.pattern === 'both' || def.projectile.pattern === 'ground')) {
+    const dist = Math.min(300, Math.max(96, Math.abs(p.x - e.x) + 36));
+    const h = Math.max(10, def.h);
+    const y = e.y + def.y;
+    run.telegraphs.push({
+      x: facing === 1 ? e.x : e.x - dist,
+      y,
+      w: dist,
+      h,
+      life,
+      max: life,
+      kind: 'rect',
+    });
   } else if (def.teleport || def.projectile?.pattern === 'zone' || def.projectile?.pattern === 'ring') {
     const w = def.projectile?.pattern === 'zone' ? 36 : 28;
     run.telegraphs.push({

@@ -25,7 +25,7 @@ async function start(): Promise<void> {
     /* the face still falls back to the next family */
   }
   await document.fonts.ready;
-  new Phaser.Game({
+  const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'app',
     width: VIEW_W,
@@ -44,6 +44,7 @@ async function start(): Promise<void> {
     },
     scene: [Boot, Title, RunScene],
   });
+  if (import.meta.env.DEV) (window as unknown as { __game?: Phaser.Game }).__game = game;
 }
 
 void start();

@@ -9,6 +9,7 @@ import { BIND_ORDER, captureKey, gather, keyLabel, type BindAction } from '../..
 import { label, wrapText } from '../../render/text';
 import { PLAYER_H, PLAYER_OX, PLAYER_OY, PLAYER_W, playerKey } from '../../render/sprites';
 import { loadSave, wipeSave, writeSave, type SaveFile } from '../../save/save';
+import { syncTouch } from '../../ui/touch';
 
 type Screen = 'main' | 'help' | 'credits' | 'settings' | 'rebind' | 'altar' | 'loadout' | 'overwrite' | 'wipe';
 
@@ -74,6 +75,7 @@ export class Title extends Phaser.Scene {
 
   private tick = (): void => {
     audio.pump();
+    syncTouch(this.save.settings, false);
     const tiles = this.children.list.filter((c) => c instanceof Phaser.GameObjects.TileSprite) as Phaser.GameObjects.TileSprite[];
     const scroll = this.time.now / 1000;
     if (tiles[0]) tiles[0].tilePositionX = scroll * 6;

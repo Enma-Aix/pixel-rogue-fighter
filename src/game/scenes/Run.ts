@@ -138,9 +138,11 @@ export class RunScene extends Phaser.Scene {
     if (import.meta.env.DEV) {
       const q = new URLSearchParams(location.search);
       this.showBoxes = q.has('boxes');
-      if (q.has('boss') && !this.run.tutorial) {
-        const floor = this.run.floors[Number(q.get('floor') ?? 0)] ?? this.run.floors[0];
-        if (floor) enterRoom(this.run, floor.bossId, 'spawn', false);
+      const floor = this.run.floors[Number(q.get('floor') ?? 0)] ?? this.run.floors[0];
+      if (q.has('boss') && floor && !this.run.tutorial) enterRoom(this.run, floor.bossId, 'spawn', false);
+      if (q.has('combat') && floor && !this.run.tutorial) {
+        const room = floor.rooms.find((r) => r.type === 'combat');
+        if (room) enterRoom(this.run, room.id, 'spawn', false);
       }
     }
     audio.unlock();
@@ -600,9 +602,11 @@ export class RunScene extends Phaser.Scene {
         g.fillStyle(0xffb03a, a * 0.35);
         g.fillCircle(tele.x + tele.w / 2, tele.y + tele.h / 2, tele.w / 2);
       } else {
-        g.fillStyle(0xff6a2a, a * 0.45);
+        g.fillStyle(0xff6a2a, Math.min(0.72, a * 0.7));
         g.fillRect(tele.x, tele.y, tele.w, tele.h);
-        g.lineStyle(1, 0xfff1c2, Math.min(1, a + 0.2));
+        g.fillStyle(0xfff1c2, Math.min(0.9, a));
+        g.fillRect(tele.x, tele.y + tele.h / 2 - 1, tele.w, 2);
+        g.lineStyle(1, 0xfff1c2, Math.min(1, a + 0.25));
         g.strokeRect(tele.x, tele.y, tele.w, tele.h);
       }
     }
