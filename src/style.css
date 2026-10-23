@@ -1,0 +1,78 @@
+@font-face {
+  font-family: 'FusionPixel';
+  src: url('./assets/fonts/fusion-pixel-12px-proportional-zh_hans.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+* { box-sizing: border-box; }
+
+html,
+body,
+#app {
+  margin: 0;
+  height: 100%;
+  background: #07060a;
+  overflow: hidden;
+  touch-action: none;
+}
+
+body {
+  color: #f4f0ea;
+}
+
+#app canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+#touch {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+#touch[hidden],
+#rotate[hidden] {
+  display: none;
+}
+
+#touch button {
+  pointer-events: auto;
+  min-width: 52px;
+  min-height: 46px;
+  padding: 0 8px;
+  font-family: FusionPixel, sans-serif;
+  font-size: 12px;
+  color: #f4f0ea;
+  background: rgba(18, 12, 22, 0.82);
+  border: 2px solid #6a5478;
+  border-radius: 4px;
+  touch-action: none;
+  user-select: none;
+}
+
+.touch-left,
+.touch-right,
+.touch-top {
+  position: absolute;
+  display: flex;
+  gap: 8px;
+}
+
+.touch-left { left: 10px; bottom: 10px; }
+.touch-right { right: 10px; bottom: 10px; width: 230px; flex-wrap: wrap; justify-content: flex-end; }
+.touch-top { right: 10px; top: 10px; }
+
+#rotate {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  display: grid;
+  place-items: center;
+  background: #07060a;
+  font-family: FusionPixel, sans-serif;
+  font-size: 12px;
+}

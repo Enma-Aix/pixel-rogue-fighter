@@ -171,7 +171,7 @@ function tryCancel(run: Run, input: FrameInput): void {
   const m = getMove(run.weapon, a.id);
   const window = a.frame >= m.cancelAt && a.frame <= m.cancelEnd;
   const hitCancel = p.hitCancel > 0;
-  if (wantsDash(run, input) && (window || hitCancel || m.cancelTo.includes('dash'))) {
+  if (wantsDash(run, input) && m.cancelTo.includes('dash') && (window || hitCancel)) {
     if (!p.grounded && !p.airOk) return;
     p.dashBuf = 0;
     begin(run, 'dash');
