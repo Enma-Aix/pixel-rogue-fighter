@@ -172,8 +172,9 @@ export function templateBossArena(): string[][] {
   hline(g, 6, h - 5, 7, '=');
   hline(g, 35, h - 5, 7, '=');
   hline(g, 20, h - 8, 8, '=');
-  rect(g, 4, h - 5, 2, 4, '+');
-  rect(g, 42, h - 5, 2, 4, '+');
+  // Keep the entrance (tile 4, where the player spawns) clear of these supports.
+  rect(g, 10, h - 5, 2, 4, '+');
+  rect(g, 37, h - 5, 2, 4, '+');
   decor(g, [[10, h - 2], [24, h - 2], [36, h - 2]]);
   return g;
 }
