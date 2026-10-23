@@ -203,6 +203,8 @@ function standSpots(room: Room): number[] {
     const floor = room.grid[y]![x];
     if (floor !== '#') continue;
     if (Math.abs(x - cx) <= 2) continue;
+    // The player arrives on the left. Keep the first steps clear.
+    if (x < 9) continue;
     let open = true;
     for (let k = 1; k <= 3; k++) {
       const ch = room.grid[y - k]?.[x];
