@@ -69,6 +69,9 @@ export function syncTouch(settings: Settings, inRun: boolean): void {
   const rotate = document.getElementById('rotate');
   const show = inRun && touchWanted(settings);
   if (root) root.hidden = !show;
+  const was = document.body.classList.contains('touch-on');
+  document.body.classList.toggle('touch-on', show);
+  if (was !== show) window.dispatchEvent(new Event('resize'));
   const portrait = window.matchMedia('(orientation: portrait)').matches && (coarse() || settings.touch === 'on');
   if (rotate) rotate.hidden = !portrait;
 }
