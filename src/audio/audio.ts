@@ -6,49 +6,79 @@ interface Pattern {
   scale: number[];
   bass: number[];
   lead: number[];
+  harmony: number[];
   hat: number;
+  kick: number[];
+  snare: number[];
+  wave: OscillatorType;
+  pad: number;
 }
 
 const PATTERNS: Record<Exclude<Cue, 'none'>, Pattern> = {
   title: {
-    bpm: 68,
+    bpm: 72,
     root: 196,
     scale: [0, 3, 5, 7, 10, 12],
     bass: [0, 0, 5, 0, 3, 3, 7, 5],
-    lead: [12, 10, 7, 10, 12, 15, 12, 7, 5, 7, 10, 7, 5, 3, 0, 3],
-    hat: 0.04,
+    lead: [12, -1, 10, 7, 12, 15, 10, 7, 5, 7, 10, -1, 5, 3, 0, 3],
+    harmony: [7, 5, 3, 7, 10, 7, 5, 3],
+    hat: 0.03,
+    kick: [1, 0, 0, 0, 1, 0, 0, 1],
+    snare: [0, 0, 1, 0, 0, 0, 1, 0],
+    wave: 'triangle',
+    pad: 0.04,
   },
   ash: {
-    bpm: 84,
+    bpm: 92,
     root: 174,
     scale: [0, 2, 3, 7, 8, 12],
-    bass: [0, 0, 7, 0, 3, 3, 8, 7],
-    lead: [7, 8, 12, 7, 3, 2, 0, 3, 8, 7, 3, 2],
-    hat: 0.05,
+    bass: [0, 0, 7, 3, 0, 8, 7, 5],
+    lead: [7, 8, 12, 7, 3, 2, 0, 3, 8, 7, 12, 8, 3, 2, 0, -1],
+    harmony: [3, 7, 8, 3, 0, 2, 7, 5],
+    hat: 0.045,
+    kick: [1, 0, 0, 1, 0, 0, 1, 0],
+    snare: [0, 0, 1, 0, 0, 1, 0, 0],
+    wave: 'triangle',
+    pad: 0.035,
   },
   molten: {
-    bpm: 104,
-    root: 155,
+    bpm: 112,
+    root: 146,
     scale: [0, 1, 5, 7, 8, 12],
-    bass: [0, 0, 0, 5, 1, 1, 7, 5],
-    lead: [12, 8, 7, 5, 8, 12, 15, 12, 8, 5, 1, 0],
-    hat: 0.07,
+    bass: [0, 0, 0, 5, 1, 1, 7, 5, 0, 1, 0, 5, 7, 7, 8, 5],
+    lead: [12, 8, 7, 5, 8, 12, 15, 12, 8, 5, 1, 0, 7, 8, 12, 7],
+    harmony: [0, 1, 5, 7, 1, 0, 8, 5],
+    hat: 0.06,
+    kick: [1, 0, 1, 0, 1, 0, 1, 1],
+    snare: [0, 0, 1, 0, 0, 1, 0, 1],
+    wave: 'sawtooth',
+    pad: 0.02,
   },
   sanctum: {
-    bpm: 76,
+    bpm: 78,
     root: 220,
     scale: [0, 3, 5, 7, 10, 12],
     bass: [0, 7, 3, 10, 0, 5, 7, 3],
-    lead: [15, 12, 10, 12, 7, 10, 12, 15, 19, 15, 12, 10],
-    hat: 0.035,
+    lead: [15, 12, 10, 12, 7, 10, 12, 15, 19, 15, 12, 10, 7, 12, 10, 7],
+    harmony: [10, 7, 5, 7, 3, 5, 7, 10],
+    hat: 0.025,
+    kick: [1, 0, 0, 0, 1, 0, 0, 0],
+    snare: [0, 0, 0, 1, 0, 0, 1, 0],
+    wave: 'sine',
+    pad: 0.05,
   },
   boss: {
-    bpm: 118,
-    root: 146,
+    bpm: 128,
+    root: 138,
     scale: [0, 1, 3, 6, 7, 10],
-    bass: [0, 0, 1, 0, 6, 6, 7, 1],
-    lead: [7, 6, 3, 1, 0, 3, 6, 10, 7, 6, 3, 1],
-    hat: 0.09,
+    bass: [0, 0, 1, 0, 6, 6, 7, 1, 0, 0, 3, 1, 6, 7, 1, 0],
+    lead: [7, 6, 3, 1, 0, 3, 6, 10, 7, 6, 10, 7, 3, 1, 6, 7],
+    harmony: [1, 6, 7, 3, 0, 1, 6, 10],
+    hat: 0.07,
+    kick: [1, 0, 1, 0, 1, 0, 1, 0],
+    snare: [0, 0, 1, 0, 0, 1, 0, 1],
+    wave: 'sawtooth',
+    pad: 0.03,
   },
 };
 
@@ -99,7 +129,7 @@ class AudioBus {
     if (this.nextAt < now) this.nextAt = now + 0.05;
     while (this.nextAt < now + 0.25) {
       this.schedule(pattern, this.nextAt, this.step);
-      this.step = (this.step + 1) % Math.max(pattern.bass.length, pattern.lead.length);
+      this.step = (this.step + 1) % 32;
       this.nextAt += beat;
     }
   }
@@ -112,13 +142,24 @@ class AudioBus {
       const idx = ((n % scale.length) + scale.length) % scale.length;
       return pattern.root * 2 ** (oct + scale[idx]! / 12);
     };
+    const music = this.music;
+    if (step % 8 === 0) this.tone(pattern.root / 2, when, 1.4, 'sine', pattern.pad, music);
     if (step % 2 === 0) {
-      const bass = pattern.bass[step % pattern.bass.length]!;
-      this.tone(degree(bass) / 2, when, 0.18, 'triangle', 0.18, this.music);
+      const bass = pattern.bass[(step / 2) % pattern.bass.length]!;
+      this.tone(degree(bass) / 2, when, 0.22, pattern.wave === 'sawtooth' ? 'sawtooth' : 'triangle', pattern.wave === 'sawtooth' ? 0.07 : 0.11, music);
     }
     const lead = pattern.lead[step % pattern.lead.length]!;
-    if (lead >= 0 && step % 2 === 0) this.tone(degree(lead), when, 0.12, 'square', 0.045, this.music);
-    if (step % 2 === 1) this.noise(when, 0.03, pattern.hat, 1800);
+    if (lead >= 0 && step % 2 === 0) {
+      this.tone(degree(lead), when, 0.16, pattern.wave === 'sine' ? 'triangle' : 'square', 0.035, music);
+      this.tone(degree(lead) * 2, when, 0.08, 'triangle', 0.012, music);
+    }
+    if (step % 4 === 2) {
+      const harm = pattern.harmony[(step / 4) % pattern.harmony.length]!;
+      if (harm >= 0) this.tone(degree(harm), when, 0.2, 'triangle', 0.028, music);
+    }
+    if (pattern.kick[step % pattern.kick.length]) this.noise(when, 0.08, 0.16, 140, music);
+    if (pattern.snare[step % pattern.snare.length]) this.noise(when, 0.1, pattern.hat * 3.2, 900, music);
+    if (step % 2 === 1) this.noise(when, 0.03, pattern.hat, 2400, music);
   }
 
   play(id: string): void {
@@ -179,6 +220,7 @@ class AudioBus {
       case 'die':
         this.noise(t, 0.12, 0.2, 600);
         this.tone(300, t, 0.1, 'square', 0.06, out);
+        this.tone(180, t + 0.04, 0.12, 'triangle', 0.04, out);
         break;
       case 'bossDie':
         this.tone(80, t, 0.5, 'sawtooth', 0.14, out);
@@ -186,6 +228,7 @@ class AudioBus {
         break;
       case 'dash':
         this.noise(t, 0.1, 0.16, 1200);
+        this.noise(t, 0.14, 0.08, 400);
         this.tone(640, t, 0.08, 'square', 0.04, out);
         break;
       case 'jump':
@@ -194,6 +237,7 @@ class AudioBus {
         break;
       case 'land':
         this.noise(t, 0.05, 0.12, 300);
+        this.tone(90, t, 0.06, 'triangle', 0.05, out);
         break;
       case 'parry':
         this.tone(880, t, 0.08, 'square', 0.08, out);
@@ -238,6 +282,7 @@ class AudioBus {
         break;
       case 'roar':
         this.tone(70, t, 0.35, 'sawtooth', 0.12, out);
+        this.tone(42, t, 0.4, 'square', 0.06, out);
         this.noise(t, 0.25, 0.18, 250);
         break;
       case 'boom':
@@ -278,7 +323,7 @@ class AudioBus {
     osc.stop(when + dur + 0.02);
   }
 
-  private noise(when: number, dur: number, vol: number, freq: number): void {
+  private noise(when: number, dur: number, vol: number, freq: number, dest?: AudioNode): void {
     if (!this.ctx || !this.sfx) return;
     const length = Math.max(1, Math.floor(this.ctx.sampleRate * dur));
     const buffer = this.ctx.createBuffer(1, length, this.ctx.sampleRate);
@@ -287,14 +332,14 @@ class AudioBus {
     const src = this.ctx.createBufferSource();
     src.buffer = buffer;
     const filter = this.ctx.createBiquadFilter();
-    filter.type = 'bandpass';
+    filter.type = freq < 240 ? 'lowpass' : 'bandpass';
     filter.frequency.setValueAtTime(freq, when);
     const gain = this.ctx.createGain();
     gain.gain.setValueAtTime(vol, when);
     gain.gain.exponentialRampToValueAtTime(0.001, when + dur);
     src.connect(filter);
     filter.connect(gain);
-    gain.connect(this.sfx);
+    gain.connect(dest ?? this.sfx);
     src.start(when);
     src.stop(when + dur + 0.02);
   }
