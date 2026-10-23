@@ -129,8 +129,10 @@ function carve(room: Room): void {
   if (room.doors.l) punchSide(0, !!room.secret.l);
   if (room.doors.r) punchSide(w - 1, !!room.secret.r);
 
-  const upX = room.type === 'boss' ? 5 : Math.floor(w / 2);
-  const downX = room.type === 'boss' ? Math.floor(w / 2) : Math.floor(w / 2);
+  // Keep the up-ladder off the down-hole so a climb has solid ground under it.
+  const mid = Math.floor(w / 2);
+  const upX = room.type === 'boss' ? 8 : Math.max(4, mid - 4);
+  const downX = room.type === 'boss' ? mid : Math.min(w - 5, mid + 3);
   room.upTile = upX;
   room.downTile = downX;
 
@@ -152,7 +154,9 @@ function carve(room: Room): void {
           if (g[y]![x] === '#' || g[y]![x] === '+') g[y]![x] = '.';
         }
       }
-      const ladder = [5, 9, 13, 17, 21, 25].filter((y) => y < h - 4 && y > 2);
+      // Step up from the floor. Fixed rows left short rooms with no jumpable step.
+      const ladder: number[] = [];
+      for (let y = h - 5; y > 2; y -= 4) ladder.push(y);
       for (const y of ladder) {
         for (let dx = -3; dx <= 3; dx++) {
           const x = upX + dx;

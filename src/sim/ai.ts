@@ -85,6 +85,17 @@ function syncEnemyAnim(e: Enemy): void {
   e.animFrame = Math.floor(e.frame / 8) % 6;
 }
 
+/** Jump onto a ledge the player is camping. Flat chases stay on the ground. */
+function chaseHop(e: Enemy, playerY: number, playerGrounded: boolean, dir: 1 | -1, dist: number): boolean {
+  if (!e.boss || e.fly || !e.grounded || !playerGrounded) return false;
+  const rise = e.y - playerY;
+  if (rise < 36 || dist > 128) return false;
+  e.vy = -6.5;
+  e.vx = dir * Math.max(1.55, e.speed * 1.35);
+  e.grounded = false;
+  return true;
+}
+
 function pickAttack(run: Run, e: Enemy, def: EnemyDef, dist: number): AttackDef | null {
   if (e.cd > 0) return null;
   const options = def.attacks.filter((a) => {
@@ -304,7 +315,13 @@ function physicsEnemy(run: Run, e: Enemy): void {
       if (!e.grounded) e.vy = Math.min(MAX_FALL, e.vy + GRAVITY);
       else if (e.vy > 0) e.vy = 0;
     }
-    const res = moveBody(e, room.grid, 'enemy', false);
+    // A launched trash enemy on a high ledge would soft-lock the room. Drop back down.
+    const stranded = !e.fly && !e.boss && e.y < run.player.y - 80;
+    if (stranded && e.grounded) {
+      e.vy = 2.2;
+      e.grounded = false;
+    }
+    const res = moveBody(e, room.grid, 'enemy', stranded);
     e.grounded = res.grounded;
     if (e.grounded) e.juggle = 0;
   }
@@ -343,6 +360,7 @@ function think(run: Run, e: Enemy, def: EnemyDef): void {
     return;
   }
   e.facing = dir;
+  if (chaseHop(e, p.y, p.grounded, dir, dist)) return;
   const chosen = pickAttack(run, e, def, dist);
   if (chosen) {
     startAttack(run, e, chosen);
@@ -350,7 +368,13 @@ function think(run: Run, e: Enemy, def: EnemyDef): void {
   }
   const speed = e.speed * (e.boss && e.phase > 1 ? 1.12 : 1);
   if (e.fly) {
-    const want = dist < 90 ? -dir : dir;
+    let want = dist < 90 ? -dir : dir;
+    const room = currentRoom(run);
+    if (e.x < 64) want = 1;
+    else if (e.x > room.w * TILE - 64) want = -1;
+    if (e.y < p.y - 90) e.vy += 0.16;
+    else if (e.y > p.y - 12) e.vy -= 0.08;
+    e.vy = clamp(e.vy, -1.2, 1.4);
     e.vx += want * 0.08;
     e.vx = clamp(e.vx, -speed, speed);
     return;

@@ -397,7 +397,8 @@ export function resolveCombat(run: Run): void {
         }
         continue;
       }
-      if (p.action && getMove(run.weapon, p.action.id).special === 'parry' && isActiveFrame(getMove(run.weapon, p.action.id), p.action.frame)) {
+      const parrying = p.action && p.action.id !== 'heal' && getMove(run.weapon, p.action.id).special === 'parry';
+      if (parrying && p.action && isActiveFrame(getMove(run.weapon, p.action.id), p.action.frame)) {
         proj.life = 0;
         parrySuccess(run, null);
         continue;
